@@ -14,7 +14,9 @@ variables:
   imageRepository: 'image-$(Build.Repository.Name)'
   containerRegistry: 'ntuleaderboardbackend.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  tag: '$(Build.BuildId)'
+  tags: |
+      latest
+      $(Build.BuildId)
 
   # Agent VM image name
   vmImageName: 'ubuntu-latest'
@@ -36,4 +38,4 @@ stages:
         dockerfile: $(dockerfilePath)
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
-          $(tag)
+          $(tags)
