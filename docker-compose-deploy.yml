@@ -7,7 +7,7 @@ services:
     #   context: .
     ports:
       - "8000:8000"
-    command: sh -c "gunicorn core.wsgi:application -b 0.0.0.0:8000"
+    command: gunicorn core.wsgi:application -b 0.0.0.0:8000
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
