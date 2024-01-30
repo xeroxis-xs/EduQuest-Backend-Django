@@ -11,8 +11,5 @@ RUN mkdir /app
 COPY ./app /app
 WORKDIR /app
 
-RUN python manage.py collectstatic --noinput
-
-# Run Gunicorn
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
-
+# Run Server
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
