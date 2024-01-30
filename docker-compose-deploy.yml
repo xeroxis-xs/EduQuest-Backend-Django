@@ -1,10 +1,36 @@
+# version: '3.7'
+
+# services:
+#   app:
+#     image: ntuleaderboardbackend.azurecr.io/image-fyp-ntuleaderboard-backend:latest
+#     volumes:
+#       - static_data:/vol/web
+#     environment:
+#       - SECRET_KEY=${SECRET_KEY}
+#       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+#       - DB_NAME=${DB_NAME}
+#       - DB_USER=${DB_USER}
+#       - DB_PASSWORD=${DB_PASSWORD}
+#       - DB_HOST=${DB_HOST}
+#       - DB_PORT=${DB_PORT}
+
+#   proxy:
+#     image: ntuleaderboardbackendproxy.azurecr.io/image-fyp-ntuleaderboard-backend-proxy:latest
+#     volumes:
+#       - static_data:/vol/static
+#     ports:
+#       - "8080:8080"
+
+# volumes:
+#   static_data:
 version: '3.7'
 
 services:
   app:
     image: ntuleaderboardbackend.azurecr.io/image-fyp-ntuleaderboard-backend:latest
-    volumes:
-      - static_data:/vol/web
+    ports:
+      - "8000:8000"
+    command: gunicorn core.wsgi:application -b 0.0.0.0:8000
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
@@ -13,13 +39,3 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
-
-  proxy:
-    image: ntuleaderboardbackendproxy.azurecr.io/image-fyp-ntuleaderboard-backend-proxy:latest
-    volumes:
-      - static_data:/vol/static
-    ports:
-      - "8080:8080"
-
-volumes:
-  static_data:
