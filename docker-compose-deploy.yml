@@ -2,15 +2,12 @@ version: '3.7'
 
 services:
   app:
-    image: ntuleaderboardbackend.azurecr.io/image-fyp-ntuleaderboard-backend:latest
+    # image: ntuleaderboardbackend.azurecr.io/image-fyp-ntuleaderboard-backend:latest
+    build:
+      context: .
     ports:
       - "8000:8000"
-    command:
-      - /bin/sh
-      - -c
-      - |
-        python manage.py collectstatic --noinput
-        gunicorn core.wsgi:application -b 0.0.0.0:8000
+    command: sh -c "gunicorn core.wsgi:application -b 0.0.0.0:8000"
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
