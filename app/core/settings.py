@@ -29,7 +29,7 @@ SECRET_KEY = config('SECRET_KEY', 'local_development')
 DEBUG = bool(int(config('DEBUG', 0)))
 
 ALLOWED_HOSTS = []
-ALLOWED_HOSTS_ENV = config('ALLOWED_HOSTS')
+ALLOWED_HOSTS_ENV = config('ALLOWED_HOSTS', 'localhost')
 if ALLOWED_HOSTS_ENV:
     ALLOWED_HOSTS.extend(ALLOWED_HOSTS_ENV.split(','))
 
