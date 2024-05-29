@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   app:
-    image: ntuleaderboardbackend.azurecr.io/image-fyp-ntuleaderboard-backend:latest
+    image: eduquestbackend.azurecr.io/eduquest-backend-django:latest
     # build:
     #   context: .
     ports:
