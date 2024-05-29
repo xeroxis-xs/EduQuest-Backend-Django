@@ -2,17 +2,19 @@ version: '3.7'
 
 services:
   app:
-    image: eduquestbackend.azurecr.io/eduquest-backend-django:latest
-    # build:
-    #   context: .
+    build:
+      context: .
     ports:
       - "8000:8000"
-    command: gunicorn core.wsgi:application -b 0.0.0.0:8000
+    volumes:
+      - ./app:/app
+    command: sh -c "python manage.py runserver 0.0.0.0:8000"
     environment:
       - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - ALLOWED_HOSTS=127.0.0.1,localhost
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
+      - DEBUG=1
