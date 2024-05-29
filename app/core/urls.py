@@ -24,18 +24,20 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.defaults import bad_request
 
+def redirect_to_admin(request):
+    return redirect('admin/')
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff
 
 def custom_error_redirect(request):
-    return redirect('https://ntuleaderboard.azurewebsites.net/')
+    return redirect('https://eduquest-backend.azurewebsites.net/admin')
 
 schema_view = get_schema_view(
    openapi.Info(
       title="NTU Leaderboard API",
       default_version='v1',
-      description="This a documentation for the NTU Leaderboard API",
+      description="This a documentation for the EduQuest API",
       terms_of_service="https://www.google.com/policies/terms/",
       contact=openapi.Contact(email="C210101@e.ntu.edu.sg"),
       license=openapi.License(name="BSD License"),
@@ -45,6 +47,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('', redirect_to_admin),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     # path('docs/', user_passes_test(is_admin)(schema_view.with_ui('redoc', cache_timeout=0)), name='schema-redoc'),
