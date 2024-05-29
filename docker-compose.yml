@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   app:
-    image: eduquestbackend.azurecr.io/eduquest-backend-django:latest
+    image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
     # build:
     #   context: .
     ports:
