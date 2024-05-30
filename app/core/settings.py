@@ -44,8 +44,55 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    # 'rest_framework.authtoken',
     'drf_yasg',
-    'api'
+    'api',
+    'django_auth_adfs',
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ]
+}
+
+# Configure django to redirect users to the right URL for login
+LOGIN_URL = "django_auth_adfs:login"
+LOGIN_REDIRECT_URL = "/"
+
+client_id = config('AZURE_AD_CLIENT_ID', '')
+client_secret = config('AZURE_AD_CLIENT_SECRET', '')
+tenant_id = '3530c52e-75a1-45c9-8822-74db63346457'
+# tenant_id = 'common'
+
+AUTH_ADFS = {
+    'AUDIENCE': client_id,
+    'CLIENT_ID': client_id,
+    'CLIENT_SECRET': client_secret,
+    # 'CLAIM_MAPPING': {'first_name': 'given_name',
+    #                   'last_name': 'family_name',
+    #                   'email': 'upn'},
+    # 'GROUPS_CLAIM': 'roles',
+    # 'MIRROR_GROUPS': True,
+    # 'USERNAME_CLAIM': 'upn',
+    'TENANT_ID': tenant_id,
+    'RELYING_PARTY_ID': client_id,
+    # you can exclude other pages from authentication
+    'LOGIN_EXEMPT_URLS': [
+        '^api',  # Assuming you API is available at /api
+    ],
+    'VERSION': 'v2.0'
+}
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'django_auth_adfs.backend.AdfsAuthCodeBackend',
+    'django_auth_adfs.backend.AdfsAccessTokenBackend',
+    # Add your custom backend if needed
 ]
 
 
@@ -58,11 +105,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    # Add your custom backend if needed
+    'django_auth_adfs.middleware.LoginRequiredMiddleware',
 ]
 
 
@@ -101,6 +144,11 @@ DATABASES = {
         'PORT': config('DB_PORT', ''),
     }
 }
+
+# Azure AD
+# AZURE_AD_CLIENT_ID = config('AZURE_AD_CLIENT_ID', '')
+# AZURE_AD_CLIENT_SECRET = config('AZURE_AD_CLIENT_SECRET', '')
+
 
 
 # Password validation
@@ -158,3 +206,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #     # Whether to show the UI customizer on the sidebar
 #     "show_ui_builder": True
 # }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'django_auth_adfs': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
