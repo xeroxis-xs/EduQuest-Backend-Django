@@ -47,20 +47,20 @@ INSTALLED_APPS = [
     # 'rest_framework.authtoken',
     'drf_yasg',
     'api',
-    'corsheaders',
+    # 'corsheaders',
     # 'django_auth_adfs',
 ]
 
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        # 'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ]
-}
+# REST_FRAMEWORK = {
+#     'DEFAULT_PERMISSION_CLASSES': (
+#         'rest_framework.permissions.IsAuthenticated',
+#     ),
+#     'DEFAULT_AUTHENTICATION_CLASSES': [
+#         # 'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
+#         'rest_framework.authentication.SessionAuthentication',
+#         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+#     ]
+# }
 
 # # Configure django to redirect users to the right URL for login
 # LOGIN_URL = "django_auth_adfs:login"
@@ -107,7 +107,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    # 'corsheaders.middleware.CorsMiddleware',
     # 'django_auth_adfs.middleware.LoginRequiredMiddleware',
 ]
 
