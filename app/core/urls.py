@@ -25,8 +25,9 @@ from drf_yasg import openapi
 from django.views.defaults import bad_request
 from rest_framework.authtoken.views import obtain_auth_token
 
-def redirect_to_oath2_login(request):
-    return redirect('oath2/login')
+# def redirect_to_oath2_login(request):
+#     return redirect('oath2/login')
+
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff
@@ -48,8 +49,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('', redirect_to_oath2_login),
-    path('oath2/', include('django_auth_adfs.urls')),
+    path('admin/', admin.site.urls),
+    path('', admin.site.urls),
+    # path('oath2/', include('django_auth_adfs.urls')),
     # path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
     # path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
