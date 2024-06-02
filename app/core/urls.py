@@ -52,9 +52,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', redirect_to_admin),
-    # path('oath2/', include('django_auth_adfs.urls')),
+    # path('admin/', admin.site.urls),
+    path('', redirect_to_oath2_login),
+    path('oath2/', include('django_auth_adfs.urls')),
     # path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
     # path('admin/', admin.site.urls),
     path('api/', include('api.urls')),

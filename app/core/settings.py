@@ -48,52 +48,52 @@ INSTALLED_APPS = [
     'drf_yasg',
     'api',
     # 'corsheaders',
-    # 'django_auth_adfs',
+    'django_auth_adfs',
 ]
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_PERMISSION_CLASSES': (
-#         'rest_framework.permissions.IsAuthenticated',
-#     ),
-#     'DEFAULT_AUTHENTICATION_CLASSES': [
-#         # 'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
-#         'rest_framework.authentication.SessionAuthentication',
-#         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
-#     ]
-# }
+REST_FRAMEWORK = {
+    # 'DEFAULT_PERMISSION_CLASSES': (
+    #     'rest_framework.permissions.IsAuthenticated',
+    # ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ]
+}
 
-# # Configure django to redirect users to the right URL for login
-# LOGIN_URL = "django_auth_adfs:login"
-# LOGIN_REDIRECT_URL = "/"
+# Configure django to redirect users to the right URL for login
+LOGIN_URL = "django_auth_adfs:login"
+LOGIN_REDIRECT_URL = "/"
 
-# client_id = config('AZURE_AD_CLIENT_ID', '')
-# client_secret = config('AZURE_AD_CLIENT_SECRET', '')
-# tenant_id = '3530c52e-75a1-45c9-8822-74db63346457'
+client_id = config('AZURE_AD_CLIENT_ID', '')
+client_secret = config('AZURE_AD_CLIENT_SECRET', '')
+tenant_id = '3530c52e-75a1-45c9-8822-74db63346457'
 # tenant_id = 'common'
 
-# AUTH_ADFS = {
-#     'AUDIENCE': client_id,
-#     'CLIENT_ID': client_id,
-#     'CLIENT_SECRET': client_secret,
-#     # 'CLAIM_MAPPING': {'first_name': 'given_name',
-#     #                   'last_name': 'family_name',
-#     #                   'email': 'upn'},
-#     # 'GROUPS_CLAIM': 'roles',
-#     # 'MIRROR_GROUPS': True,
-#     # 'USERNAME_CLAIM': 'upn',
-#     'TENANT_ID': tenant_id,
-#     'RELYING_PARTY_ID': client_id,
-#     # you can exclude other pages from authentication
-#     'LOGIN_EXEMPT_URLS': [
-#         '^api',  # Assuming you API is available at /api
-#     ],
-#     'VERSION': 'v2.0'
-# }
+AUTH_ADFS = {
+    'AUDIENCE': client_id,
+    'CLIENT_ID': client_id,
+    'CLIENT_SECRET': client_secret,
+    'CLAIM_MAPPING': {'first_name': 'given_name',
+                      'last_name': 'family_name',
+                      'email': 'upn'},
+    'GROUPS_CLAIM': 'roles',
+    'MIRROR_GROUPS': True,
+    'USERNAME_CLAIM': 'upn',
+    'TENANT_ID': tenant_id,
+    'RELYING_PARTY_ID': client_id,
+    # you can exclude other pages from authentication
+    # 'LOGIN_EXEMPT_URLS': [
+    #     '^api',  # Assuming you API is available at /api
+    # ],
+    'VERSION': 'v2.0'
+}
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    # 'django_auth_adfs.backend.AdfsAuthCodeBackend',
-    # 'django_auth_adfs.backend.AdfsAccessTokenBackend',
+    'django_auth_adfs.backend.AdfsAuthCodeBackend',
+    'django_auth_adfs.backend.AdfsAccessTokenBackend',
     # Add your custom backend if needed
 ]
 
@@ -108,7 +108,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 'corsheaders.middleware.CorsMiddleware',
-    # 'django_auth_adfs.middleware.LoginRequiredMiddleware',
+    'django_auth_adfs.middleware.LoginRequiredMiddleware',
 ]
 
 
@@ -210,58 +210,58 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #     "show_ui_builder": True
 # }
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
-#         },
-#     },
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'verbose'
-#         },
-#     },
-#     'loggers': {
-#         'django_auth_adfs': {
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#         },
-#     },
-# }
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
-
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-
-    # Enable token blacklisting
-    'BLACKLIST_STORE': 'django_redis.cache.RedisCache',
-    'BLACKLIST_STORE_OPTIONS': {
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'django_auth_adfs': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
         },
     },
 }
+
+# SIMPLE_JWT = {
+#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+#     'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+#     'ROTATE_REFRESH_TOKENS': True,
+#     'BLACKLIST_AFTER_ROTATION': True,
+#
+#     'ALGORITHM': 'HS256',
+#     'SIGNING_KEY': SECRET_KEY,
+#     'VERIFYING_KEY': None,
+#     'AUDIENCE': None,
+#     'ISSUER': None,
+#
+#     'AUTH_HEADER_TYPES': ('Bearer',),
+#     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+#     'USER_ID_FIELD': 'id',
+#     'USER_ID_CLAIM': 'user_id',
+#
+#     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+#     'TOKEN_TYPE_CLAIM': 'token_type',
+#
+#     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+#     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+#     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+#
+#     # Enable token blacklisting
+#     'BLACKLIST_STORE': 'django_redis.cache.RedisCache',
+#     'BLACKLIST_STORE_OPTIONS': {
+#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         },
+#     },
+# }
