@@ -102,6 +102,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://eduquest-frontend.azurewebsites.net",
 ]
 
 ROOT_URLCONF = 'core.urls'
