@@ -23,9 +23,14 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.defaults import bad_request
+from rest_framework.authtoken.views import obtain_auth_token
+
+def redirect_to_oath2_login(request):
+    return redirect('oath2/login')
 
 def redirect_to_admin(request):
-    return redirect('admin/')
+    return redirect('/admin/')
+
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff
@@ -47,8 +52,8 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('', redirect_to_admin),
     path('admin/', admin.site.urls),
+    path('', redirect_to_admin),
     path('api/', include('api.urls')),
     # path('docs/', user_passes_test(is_admin)(schema_view.with_ui('redoc', cache_timeout=0)), name='schema-redoc'),
     path('docs/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
