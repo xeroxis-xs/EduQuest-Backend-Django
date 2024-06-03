@@ -8,7 +8,7 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app
-    command: sh -c "python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py runserver 127.0.0.1:8000"
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=127.0.0.1,localhost
@@ -17,4 +17,6 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
+      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
+      - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - DEBUG=1

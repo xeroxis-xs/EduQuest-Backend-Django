@@ -55,10 +55,8 @@ class CustomJWTAuthentication(JWTAuthentication):
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('Token has expired, please authenticate again.')
         except jwt.InvalidAudienceError:
-            print("Invalid audience")
             raise AuthenticationFailed('Invalid audience.')
         except jwt.DecodeError:
-            print("Error decoding token")
             raise AuthenticationFailed('Error decoding token.')
         except jwt.PyJWTError as e:
             raise AuthenticationFailed(f'Token is invalid: {str(e)}')
@@ -88,7 +86,6 @@ class CustomJWTAuthentication(JWTAuthentication):
 
             return user
         except Exception as e:
-            print(f'Failed to get or create user: {str(e)}')
             raise AuthenticationFailed(f'Failed to get or create user: {str(e)}')
 
     def session_authenticate(self, request):
