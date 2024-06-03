@@ -44,12 +44,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    # 'rest_framework.authtoken',
     'drf_yasg',
     'api',
     'rest_framework_simplejwt',
     'corsheaders',
-    # 'django_auth_adfs',
 ]
 
 REST_FRAMEWORK = {
@@ -62,13 +60,6 @@ REST_FRAMEWORK = {
     ),
     'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
 }
-
-# AZURE_AD = {
-#     'CLIENT_ID': config('AZURE_AD_CLIENT_ID', ''),
-#     'TENANT_ID': '3530c52e-75a1-45c9-8822-74db63346457',
-#     'ISSUER': f'https://login.microsoftonline.com/3530c52e-75a1-45c9-8822-74db63346457/v2.0',
-#     'AUDIENCE': 'api://778ca789-6293-4ad6-8bae-04fb1a9d9943/.default',
-# }
 
 AZURE_CLIENT_ID = config('AZURE_AD_CLIENT_ID', '')
 AZURE_TENANT_ID = 'common'
@@ -88,50 +79,8 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_PERMISSION_CLASSES': (
-#         'rest_framework.permissions.IsAuthenticated',
-#     ),
-#     'DEFAULT_AUTHENTICATION_CLASSES': [
-#         # 'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
-#         'rest_framework.authentication.SessionAuthentication',
-#         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
-#     ]
-# }
-
-# # Configure django to redirect users to the right URL for login
-# LOGIN_URL = "django_auth_adfs:login"
-# LOGIN_REDIRECT_URL = "/"
-
-# client_id = config('AZURE_AD_CLIENT_ID', '')
-# client_secret = config('AZURE_AD_CLIENT_SECRET', '')
-# tenant_id = '3530c52e-75a1-45c9-8822-74db63346457'
-# tenant_id = 'common'
-
-# AUTH_ADFS = {
-#     'AUDIENCE': client_id,
-#     'CLIENT_ID': client_id,
-#     'CLIENT_SECRET': client_secret,
-#     # 'CLAIM_MAPPING': {'first_name': 'given_name',
-#     #                   'last_name': 'family_name',
-#     #                   'email': 'upn'},
-#     # 'GROUPS_CLAIM': 'roles',
-#     # 'MIRROR_GROUPS': True,
-#     # 'USERNAME_CLAIM': 'upn',
-#     'TENANT_ID': tenant_id,
-#     'RELYING_PARTY_ID': client_id,
-#     # you can exclude other pages from authentication
-#     'LOGIN_EXEMPT_URLS': [
-#         '^api',  # Assuming you API is available at /api
-#     ],
-#     'VERSION': 'v2.0'
-# }
-
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    # 'django_auth_adfs.backend.AdfsAuthCodeBackend',
-    # 'django_auth_adfs.backend.AdfsAccessTokenBackend',
-    # Add your custom backend if needed
 ]
 
 
@@ -144,16 +93,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'api.middleware.AzureADTokenAuthenticationMiddleware'
-
     'corsheaders.middleware.CorsMiddleware',
-    # 'django_auth_adfs.middleware.LoginRequiredMiddleware',
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
-
 
 ROOT_URLCONF = 'core.urls'
 
@@ -191,9 +136,6 @@ DATABASES = {
     }
 }
 
-# Azure AD
-# AZURE_AD_CLIENT_ID = config('AZURE_AD_CLIENT_ID', '')
-# AZURE_AD_CLIENT_SECRET = config('AZURE_AD_CLIENT_SECRET', '')
 
 
 
@@ -251,26 +193,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # JAZZMIN_SETTINGS = {
 #     # Whether to show the UI customizer on the sidebar
 #     "show_ui_builder": True
-# }
-
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
-#         },
-#     },
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'verbose'
-#         },
-#     },
-#     'loggers': {
-#         'django_auth_adfs': {
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#         },
-#     },
 # }
