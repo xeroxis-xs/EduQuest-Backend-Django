@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run Dev" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="runserver localhost:8000" type="PythonConfigurationType" factoryName="Python">
     <module name="fyp-ntuleaderboard-backend" />
     <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />

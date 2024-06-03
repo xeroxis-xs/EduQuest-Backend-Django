@@ -47,9 +47,46 @@ INSTALLED_APPS = [
     # 'rest_framework.authtoken',
     'drf_yasg',
     'api',
-    # 'corsheaders',
+    'rest_framework_simplejwt',
+    'corsheaders',
     # 'django_auth_adfs',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'api.authentication.CustomJWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
+}
+
+# AZURE_AD = {
+#     'CLIENT_ID': config('AZURE_AD_CLIENT_ID', ''),
+#     'TENANT_ID': '3530c52e-75a1-45c9-8822-74db63346457',
+#     'ISSUER': f'https://login.microsoftonline.com/3530c52e-75a1-45c9-8822-74db63346457/v2.0',
+#     'AUDIENCE': 'api://778ca789-6293-4ad6-8bae-04fb1a9d9943/.default',
+# }
+
+AZURE_CLIENT_ID = config('AZURE_AD_CLIENT_ID', '')
+AZURE_TENANT_ID = 'common'
+AZURE_AUTHORITY = f'https://login.microsoftonline.com/{AZURE_TENANT_ID}'
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+    'ALGORITHM': 'RS256',  # Use RS256 for Azure AD tokens
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+}
 
 # REST_FRAMEWORK = {
 #     'DEFAULT_PERMISSION_CLASSES': (
@@ -107,8 +144,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'corsheaders.middleware.CorsMiddleware',
+    # 'api.middleware.AzureADTokenAuthenticationMiddleware'
+
+    'corsheaders.middleware.CorsMiddleware',
     # 'django_auth_adfs.middleware.LoginRequiredMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
 ]
 
 
@@ -231,37 +274,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #         },
 #     },
 # }
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
-
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-
-    # Enable token blacklisting
-    'BLACKLIST_STORE': 'django_redis.cache.RedisCache',
-    'BLACKLIST_STORE_OPTIONS': {
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-    },
-}
