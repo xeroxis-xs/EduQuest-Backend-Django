@@ -7,6 +7,6 @@ from .views import (
 
 urlpatterns = [
     path("Users/", UserDetailView.as_view(), name='User-detail'),
-    path("WooclapUsers/", WooclapUserListCreateView.as_view(), name='WooclapUser-list-create'),
-    path("WooclapUsers/<int:pk>/", WooclapUserManageView.as_view(), name='WooclapUser-retrieve-update-destroy'),
+    path("WooclapUser/", WooclapUserListCreateView.as_view(), name='WooclapUser-list-create'),
+    path("WooclapUser/<int:pk>/", WooclapUserManageView.as_view(), name='WooclapUser-retrieve-update-destroy'),
 ]
