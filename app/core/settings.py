@@ -83,6 +83,8 @@ AZURE_AUTHORITY = f'https://login.microsoftonline.com/{AZURE_TENANT_ID}'
 #     "SIGNING_KEY": os.environ.get('SECRET_KEY'),
 # }
 
+AUTH_USER_MODEL = 'api.EduquestUser'
+
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]

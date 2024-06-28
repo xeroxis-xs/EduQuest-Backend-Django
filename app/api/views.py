@@ -1,31 +1,186 @@
 from rest_framework import generics
-
 from rest_framework.permissions import IsAuthenticated
-from .models import WooclapUser
-from django.contrib.auth.models import User
-from .serializers import WooclapUserSerializer, UserSerializer
-from django.http import HttpResponse
+from django.contrib.auth import get_user_model
+from .models import (
+    EduquestUser,
+    AcademicYear,
+    Term,
+    Course,
+    Quest,
+    Question,
+    Answer,
+    UserQuestAttempt,
+    UserQuestQuestionAttempt,
+    UserCourseCompletion,
+    Badge
+)
+from .serializers import (
+    EduquestUserSerializer,
+    AcademicYearSerializer,
+    TermSerializer,
+    CourseSerializer,
+    QuestSerializer,
+    QuestionSerializer,
+    AnswerSerializer,
+    UserQuestAttemptSerializer,
+    UserQuestQuestionAttemptSerializer,
+    UserCourseCompletionSerializer,
+    BadgeSerializer
+)
+# from django.http import HttpResponse
+
+User = get_user_model()
 
 
-class WooclapUserListCreateView(generics.ListCreateAPIView):
+class EduquestUserListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = WooclapUser.objects.all()
-    serializer_class = WooclapUserSerializer
+    queryset = EduquestUser.objects.all()
+    serializer_class = EduquestUserSerializer
 
 
-class WooclapUserManageView(generics.RetrieveUpdateDestroyAPIView):
+class EduquestUserManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = WooclapUser.objects.all()
-    serializer_class = WooclapUserSerializer
+    queryset = EduquestUser.objects.all()
+    serializer_class = EduquestUserSerializer
 
 
-class UserDetailView(generics.RetrieveUpdateAPIView):
+class AcademicYearListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    queryset = AcademicYear.objects.all()
+    serializer_class = AcademicYearSerializer
 
-    def get_object(self):
-        return self.request.user
+
+class AcademicYearManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = AcademicYear.objects.all()
+    serializer_class = AcademicYearSerializer
+
+
+class TermListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Term.objects.all()
+    serializer_class = TermSerializer
+
+
+class TermManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Term.objects.all()
+    serializer_class = TermSerializer
+
+
+class CourseListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+
+
+class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+
+
+class QuestListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Quest.objects.all()
+    serializer_class = QuestSerializer
+
+
+class QuestManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Quest.objects.all()
+    serializer_class = QuestSerializer
+
+
+class QuestionListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+
+
+class QuestionManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+
+
+class AnswerListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
+
+
+class AnswerManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
+
+
+class UserQuestAttemptListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserQuestAttempt.objects.all()
+    serializer_class = UserQuestAttemptSerializer
+
+
+class UserQuestAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserQuestAttempt.objects.all()
+    serializer_class = UserQuestAttemptSerializer
+
+
+class UserQuestQuestionAttemptListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserQuestQuestionAttempt.objects.all()
+    serializer_class = UserQuestQuestionAttemptSerializer
+
+
+class UserQuestQuestionAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserQuestQuestionAttempt.objects.all()
+    serializer_class = UserQuestQuestionAttemptSerializer
+
+
+class UserCourseCompletionListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourseCompletion.objects.all()
+    serializer_class = UserCourseCompletionSerializer
+
+
+class UserCourseCompletionManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourseCompletion.objects.all()
+    serializer_class = UserCourseCompletionSerializer
+
+
+class BadgeListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Badge.objects.all()
+    serializer_class = BadgeSerializer
+
+
+class BadgeManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Badge.objects.all()
+    serializer_class = BadgeSerializer

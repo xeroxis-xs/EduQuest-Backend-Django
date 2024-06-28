@@ -1,10 +1,13 @@
 import jwt
 import requests
+import pytz
+from datetime import datetime
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from django.conf import settings
-from django.contrib.auth.models import User
+from .models import EduquestUser
+from .utils import split_full_name
 
 
 class CustomJWTAuthentication(JWTAuthentication):
@@ -64,25 +67,42 @@ class CustomJWTAuthentication(JWTAuthentication):
     def get_or_create_user(self, validated_token):
         try:
             email = validated_token.get('preferred_username')
+            domain = email.split('@')[1]
+            if domain == 'e.ntu.edu.sg':
+                is_staff = False
+            elif 'ntu.edu.sg' in domain:
+                is_staff = True
+            else:
+                raise AuthenticationFailed('Invalid domain.')
             username = validated_token.get('name', '')
-            first_name = validated_token.get('name', '')
-            last_name = validated_token.get('name', '')
+            formatted_username = username.replace('#', '')
+            first_name, last_name = split_full_name(formatted_username)
+            last_login = datetime.fromtimestamp(validated_token.get('iat'))
+            # Define SGT timezone
+            sgt_timezone = pytz.timezone("Asia/Singapore")
+            sgt_datetime = sgt_timezone.localize(datetime.strptime(str(last_login), "%Y-%m-%d %H:%M:%S"))
+            # Convert to UTC
+            utc_timezone = pytz.utc
+            last_login = sgt_datetime.astimezone(utc_timezone)
 
-            user, created = User.objects.get_or_create(
+            user, created = EduquestUser.objects.get_or_create(
                 email=email,
                 defaults={
                     'email': email,
                     'username': username,
+                    'nickname': username,
                     'first_name': first_name,
                     'last_name': last_name,
+                    'last_login': last_login,
+                    'is_staff': is_staff
                 }
             )
-            # print(user)
-
             if created:
-                # print("New user created")
                 # Here you can add any additional setup for the new user
                 pass
+            # else:
+            #     user.last_login = last_login
+            #     user.save()
 
             return user
         except Exception as e:
