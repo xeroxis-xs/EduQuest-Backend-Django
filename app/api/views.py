@@ -35,152 +35,152 @@ User = get_user_model()
 class EduquestUserListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = EduquestUser.objects.all()
+    queryset = EduquestUser.objects.all().order_by('-id')
     serializer_class = EduquestUserSerializer
 
 
 class EduquestUserManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = EduquestUser.objects.all()
+    queryset = EduquestUser.objects.all().order_by('-id')
     serializer_class = EduquestUserSerializer
 
 
 class AcademicYearListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = AcademicYear.objects.all()
+    queryset = AcademicYear.objects.all().order_by('-id')
     serializer_class = AcademicYearSerializer
 
 
 class AcademicYearManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = AcademicYear.objects.all()
+    queryset = AcademicYear.objects.all().order_by('-id')
     serializer_class = AcademicYearSerializer
 
 
 class TermListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Term.objects.all()
+    queryset = Term.objects.all().order_by('-id')
     serializer_class = TermSerializer
 
 
 class TermManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Term.objects.all()
+    queryset = Term.objects.all().order_by('-id')
     serializer_class = TermSerializer
 
 
 class CourseListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Course.objects.all()
+    queryset = Course.objects.all().order_by('-id')
     serializer_class = CourseSerializer
 
 
 class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Course.objects.all()
+    queryset = Course.objects.all().order_by('-id')
     serializer_class = CourseSerializer
 
 
 class QuestListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Quest.objects.all()
+    queryset = Quest.objects.all().order_by('-id')
     serializer_class = QuestSerializer
 
 
 class QuestManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Quest.objects.all()
+    queryset = Quest.objects.all().order_by('-id')
     serializer_class = QuestSerializer
 
 
 class QuestionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Question.objects.all()
+    queryset = Question.objects.all().order_by('-id')
     serializer_class = QuestionSerializer
 
 
 class QuestionManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Question.objects.all()
+    queryset = Question.objects.all().order_by('-id')
     serializer_class = QuestionSerializer
 
 
 class AnswerListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Answer.objects.all()
+    queryset = Answer.objects.all().order_by('-id')
     serializer_class = AnswerSerializer
 
 
 class AnswerManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Answer.objects.all()
+    queryset = Answer.objects.all().order_by('-id')
     serializer_class = AnswerSerializer
 
 
 class UserQuestAttemptListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserQuestAttempt.objects.all()
+    queryset = UserQuestAttempt.objects.all().order_by('-id')
     serializer_class = UserQuestAttemptSerializer
 
 
 class UserQuestAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserQuestAttempt.objects.all()
+    queryset = UserQuestAttempt.objects.all().order_by('-id')
     serializer_class = UserQuestAttemptSerializer
 
 
 class UserQuestQuestionAttemptListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserQuestQuestionAttempt.objects.all()
+    queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
     serializer_class = UserQuestQuestionAttemptSerializer
 
 
 class UserQuestQuestionAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserQuestQuestionAttempt.objects.all()
+    queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
     serializer_class = UserQuestQuestionAttemptSerializer
 
 
 class UserCourseCompletionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserCourseCompletion.objects.all()
+    queryset = UserCourseCompletion.objects.all().order_by('-id')
     serializer_class = UserCourseCompletionSerializer
 
 
 class UserCourseCompletionManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserCourseCompletion.objects.all()
+    queryset = UserCourseCompletion.objects.all().order_by('-id')
     serializer_class = UserCourseCompletionSerializer
 
 
 class BadgeListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Badge.objects.all()
+    queryset = Badge.objects.all().order_by('-id')
     serializer_class = BadgeSerializer
 
 
 class BadgeManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = Badge.objects.all()
+    queryset = Badge.objects.all().order_by('-id')
     serializer_class = BadgeSerializer
