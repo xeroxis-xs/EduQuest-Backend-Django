@@ -57,6 +57,18 @@ class TermSerializer(serializers.ModelSerializer):
         term = Term.objects.create(academic_year=academic_year, **validated_data)
         return term
 
+    def update(self, instance, validated_data):
+        academic_year_data = validated_data.pop('academic_year', None)
+
+        if academic_year_data:
+            academic_year, academic_year_created = AcademicYear.objects.get_or_create(**academic_year_data)
+            instance.academic_year = academic_year
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
 
 class CourseSerializer(serializers.ModelSerializer):
     term = TermSerializer()
@@ -77,6 +89,18 @@ class CourseSerializer(serializers.ModelSerializer):
         # Create Course using the retrieved or newly created Term
         course = Course.objects.create(term=term, **validated_data)
         return course
+
+    def update(self, instance, validated_data):
+        term_data = validated_data.pop('term', None)
+
+        if term_data:
+            term, term_created = Term.objects.get_or_create(**term_data)
+            instance.term = term
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class QuestSerializer(serializers.ModelSerializer):
