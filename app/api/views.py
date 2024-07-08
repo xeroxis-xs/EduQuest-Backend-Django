@@ -88,6 +88,15 @@ class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CourseSerializer
 
 
+class CourseByTermView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CourseSerializer
+
+    def get_queryset(self):
+        term_id = self.kwargs['term_id']
+        return Course.objects.filter(term=term_id).order_by('-id')
+
+
 class QuestListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -100,6 +109,15 @@ class QuestManageView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Quest.objects.all().order_by('-id')
     serializer_class = QuestSerializer
+
+
+class QuestByCourseView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = QuestSerializer
+
+    def get_queryset(self):
+        course_id = self.kwargs['course_id']
+        return Quest.objects.filter(from_course=course_id).order_by('-id')
 
 
 class QuestionListCreateView(generics.ListCreateAPIView):

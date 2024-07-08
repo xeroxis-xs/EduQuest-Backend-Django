@@ -43,7 +43,6 @@ class Course(models.Model):
     code = models.CharField(max_length=100)
     description = models.TextField()
     status = models.CharField(max_length=100)
-    total_quests = models.PositiveIntegerField()
 
     def __str__(self):
         return f"{self.term} - {self.code}"

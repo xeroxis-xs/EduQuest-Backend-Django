@@ -104,6 +104,7 @@ class CourseSerializer(serializers.ModelSerializer):
 
 
 class QuestSerializer(serializers.ModelSerializer):
+    from_course = CourseSerializer()
     class Meta:
         model = Quest
         fields = '__all__'
