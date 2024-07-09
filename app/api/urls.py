@@ -28,7 +28,7 @@ from .views import (
 
 urlpatterns = [
     path("EduquestUser/", EduquestUserListCreateView.as_view(), name='EduquestUser-list-create'),
-    path("EduquestUser/<int:pk>/", EduquestUserManageView.as_view(), name='EduquestUser-retrieve-update-destroy'),
+    path("EduquestUser/<str:email>/", EduquestUserManageView.as_view(), name='EduquestUser-retrieve-update-destroy'),
     path("AcademicYear/", AcademicYearListCreateView.as_view(), name='AcademicYear-list-create'),
     path("AcademicYear/<int:pk>/", AcademicYearManageView.as_view(), name='AcademicYear-retrieve-update-destroy'),
     path("Term/", TermListCreateView.as_view(), name='Term-list-create'),

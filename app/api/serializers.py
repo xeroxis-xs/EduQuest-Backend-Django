@@ -21,7 +21,7 @@ class EduquestUserSerializer(serializers.ModelSerializer):
         model = EduquestUser
         fields = ['id', 'first_name', 'last_name', 'username', 'email', 'nickname', 'last_login',
                   'updated_at', 'is_superuser', 'is_active', 'is_staff']
-        read_only_fields = ['first_name', 'last_name', 'is_superuser', 'updated_at',]
+        read_only_fields = ['first_name', 'last_name', 'is_superuser', 'updated_at', 'username']
 
     def create(self, validated_data):
         username = validated_data['username']
@@ -37,7 +37,6 @@ class EduquestUserSerializer(serializers.ModelSerializer):
         instance.last_name = last_name
         instance.save()
         return instance
-
 
 class AcademicYearSerializer(serializers.ModelSerializer):
     class Meta:
@@ -105,9 +104,27 @@ class CourseSerializer(serializers.ModelSerializer):
 
 class QuestSerializer(serializers.ModelSerializer):
     from_course = CourseSerializer()
+    organiser = EduquestUserSerializer()
+    participants = EduquestUserSerializer(many=True, read_only=True, required=False)
     class Meta:
         model = Quest
         fields = '__all__'
+
+    def create(self, validated_data):
+        from_course_data = validated_data.pop('from_course')
+        term_data = from_course_data.pop('term')
+        academic_year_data = term_data.pop('academic_year')
+        organiser_data = validated_data.pop('organiser')
+
+        academic_year = AcademicYear.objects.get(**academic_year_data)
+        term = Term.objects.get(academic_year=academic_year, **term_data)
+        from_course = Course.objects.get(term=term, **from_course_data)
+        organiser = EduquestUser.objects.get(**organiser_data)
+
+        # Create the Quest instance with the retrieved Course and EduquestUser
+        quest = Quest.objects.create(from_course=from_course, organiser=organiser, **validated_data)
+
+        return quest
 
 
 class QuestionSerializer(serializers.ModelSerializer):

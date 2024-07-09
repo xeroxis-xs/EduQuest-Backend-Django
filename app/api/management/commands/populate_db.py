@@ -40,7 +40,7 @@ class Command(BaseCommand):
     def create_academic_years_terms_courses_quests_questions(self):
         for year in range(2023, 2025):
             academic_year = AcademicYear.objects.create(start_year=year, end_year=year+1)
-            for term_name in ["Semester 1", "Semester 2", "Trimester 1", "Trimester 2", "Trimester 3"]:
+            for term_name in ["Semester 1", "Semester 2", "Special Term 1", "Special Term 2"]:
                 start_date = timezone.make_aware(fake.date_time_this_decade())
                 term = Term.objects.create(
                     academic_year=academic_year,
@@ -51,13 +51,12 @@ class Command(BaseCommand):
                 for course_num in range(1000, random.randint(1000, 1006)):
                     course = Course.objects.create(
                         term=term,
-                        name=f"Course {fake.text()}",
+                        name=f"Course {fake.company()}",
                         code=f"CS{course_num}",
-                        description=fake.text(),
-                        status="Active",
-                        total_quests=5
+                        description=fake.text(max_nb_chars=150),
+                        status="Active"
                     )
-                    for quest_num in range(1, random.randint(1, 4)):
+                    for quest_num in range(0, random.randint(1, 5)):
                         quest = Quest.objects.create(
                             from_course=course,
                             name=f"Quest {quest_num}",

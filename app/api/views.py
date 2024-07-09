@@ -1,4 +1,5 @@
 from rest_framework import generics
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from .models import (
@@ -44,6 +45,10 @@ class EduquestUserManageView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = EduquestUser.objects.all().order_by('-id')
     serializer_class = EduquestUserSerializer
+
+    def get_object(self):
+        email = self.kwargs.get('email')
+        return get_object_or_404(EduquestUser, email=email)
 
 
 class AcademicYearListCreateView(generics.ListCreateAPIView):
