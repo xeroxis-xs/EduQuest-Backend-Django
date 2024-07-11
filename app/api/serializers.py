@@ -57,14 +57,14 @@ class TermSerializer(serializers.ModelSerializer):
         return term
 
     def update(self, instance, validated_data):
-        academic_year_data = validated_data.pop('academic_year', None)
+        academic_year_data = validated_data.pop('academic_year')
+        academic_year = AcademicYear.objects.get(**academic_year_data)
 
-        if academic_year_data:
-            academic_year, academic_year_created = AcademicYear.objects.get_or_create(**academic_year_data)
-            instance.academic_year = academic_year
+        instance.academic_year = academic_year
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
         instance.save()
         return instance
 
@@ -90,11 +90,11 @@ class CourseSerializer(serializers.ModelSerializer):
         return course
 
     def update(self, instance, validated_data):
-        term_data = validated_data.pop('term', None)
-
-        if term_data:
-            term, term_created = Term.objects.get_or_create(**term_data)
-            instance.term = term
+        term_data = validated_data.pop('term')
+        # Remove academic_year from term_data
+        academic_year_data = term_data.pop('academic_year')
+        term = Term.objects.get(**term_data)
+        instance.term = term
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -125,6 +125,20 @@ class QuestSerializer(serializers.ModelSerializer):
         quest = Quest.objects.create(from_course=from_course, organiser=organiser, **validated_data)
 
         return quest
+
+    def update(self, instance, validated_data):
+        from_course_data = validated_data.pop('from_course')
+        # Remove term from from_course_data
+        term_data = from_course_data.pop('term')
+
+        from_course = Course.objects.get(**from_course_data)
+
+        instance.from_course = from_course
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class QuestionSerializer(serializers.ModelSerializer):

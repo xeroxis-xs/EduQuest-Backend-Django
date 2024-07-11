@@ -63,7 +63,7 @@ class Quest(models.Model):
 class Question(models.Model):
     from_quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField()
-    correct_answer = models.TextField()
+    number = models.PositiveIntegerField()
     max_score = models.PositiveIntegerField()
 
     def __str__(self):

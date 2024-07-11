@@ -3,7 +3,8 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from faker import Faker
-from ...models import EduquestUser, AcademicYear, Term, Course, Quest, Question, Answer, UserQuestAttempt, UserQuestQuestionAttempt, UserCourseCompletion, Badge
+from ...models import EduquestUser, AcademicYear, Term, Course, Quest, Question, Answer, UserQuestAttempt, \
+    UserQuestQuestionAttempt, UserCourseCompletion, Badge
 
 User = get_user_model()
 fake = Faker()
@@ -39,7 +40,7 @@ class Command(BaseCommand):
 
     def create_academic_years_terms_courses_quests_questions(self):
         for year in range(2023, 2025):
-            academic_year = AcademicYear.objects.create(start_year=year, end_year=year+1)
+            academic_year = AcademicYear.objects.create(start_year=year, end_year=year + 1)
             for term_name in ["Semester 1", "Semester 2", "Special Term 1", "Special Term 2"]:
                 start_date = timezone.make_aware(fake.date_time_this_decade())
                 term = Term.objects.create(
@@ -65,14 +66,16 @@ class Command(BaseCommand):
                             status="Active",
                             organiser=random.choice(User.objects.all())
                         )
+                        number = 1
                         for question_num in range(1, random.randint(1, 4)):
                             question = Question.objects.create(
                                 from_quest=quest,
                                 text=fake.sentence(),
-                                correct_answer=fake.word(),
+                                number=number,
                                 max_score=10
                             )
-                            for _ in range(3):
+                            number += 1
+                            for _ in range(4):
                                 Answer.objects.create(
                                     question=question,
                                     text=fake.word(),
@@ -119,10 +122,11 @@ class Command(BaseCommand):
                     badge = Badge.objects.create(
                         name=badge_type[0],
                         description=badge_type[1],
-                        type="Quest" if badge_type[0] in ["First Attempt", "Expert", "Speedster", "Perfectionist"] else "Course",
+                        type="Quest" if badge_type[0] in ["First Attempt", "Expert", "Speedster",
+                                                          "Perfectionist"] else "Course",
                         course=course if badge_type[0] == "Completionist" else None,
-                        quest=quest if badge_type[0] in ["First Attempt", "Expert", "Speedster", "Perfectionist"] else None,
+                        quest=quest if badge_type[0] in ["First Attempt", "Expert", "Speedster",
+                                                         "Perfectionist"] else None,
                     )
                     badge.earned_by.add(user)
                     print(f"Created badge: {badge.name} for user: {user.username}")
-

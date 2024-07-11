@@ -139,6 +139,15 @@ class QuestionManageView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = QuestionSerializer
 
 
+class QuestionByQuestView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = QuestionSerializer
+
+    def get_queryset(self):
+        quest_id = self.kwargs['quest_id']
+        return Question.objects.filter(from_quest=quest_id).order_by('-id')
+
+
 class AnswerListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -151,6 +160,16 @@ class AnswerManageView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Answer.objects.all().order_by('-id')
     serializer_class = AnswerSerializer
+
+
+class AnswerByQuestView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AnswerSerializer
+
+    def get_queryset(self):
+        quest_id = self.kwargs['quest_id']
+        questions = Question.objects.filter(from_quest=quest_id).order_by('-id')
+        return Answer.objects.filter(question__in=questions).order_by('-id')
 
 
 class UserQuestAttemptListCreateView(generics.ListCreateAPIView):
