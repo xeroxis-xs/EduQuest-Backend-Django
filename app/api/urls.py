@@ -20,8 +20,12 @@ from .views import (
     AnswerByQuestView,
     UserQuestAttemptListCreateView,
     UserQuestAttemptManageView,
+    UserQuestAttemptByUserQuestView,
     UserQuestQuestionAttemptListCreateView,
     UserQuestQuestionAttemptManageView,
+    AttemptAnswerRecordListCreateView,
+    AttemptAnswerRecordManageView,
+    UserQuestQuestionAttemptByUserQuestAttemptView,
     UserCourseCompletionListCreateView,
     UserCourseCompletionManageView,
     BadgeListCreateView,
@@ -50,8 +54,15 @@ urlpatterns = [
 
     path("UserQuestAttempt/", UserQuestAttemptListCreateView.as_view(), name='UserQuestAttempt-list-create'),
     path("UserQuestAttempt/<int:pk>/", UserQuestAttemptManageView.as_view(), name='UserQuestAttempt-retrieve-update-destroy'),
+    path("UserQuestAttempt/by-user/<int:user_id>/by-quest/<int:quest_id>/", UserQuestAttemptByUserQuestView.as_view(), name='UserQuestAttempt-by-user-quest'),
+
     path("UserQuestQuestionAttempt/", UserQuestQuestionAttemptListCreateView.as_view(), name='UserQuestQuestionAttempt-list-create'),
     path("UserQuestQuestionAttempt/<int:pk>/", UserQuestQuestionAttemptManageView.as_view(), name='UserQuestQuestionAttempt-retrieve-update-destroy'),
+    path("UserQuestQuestionAttempt/by-user-quest-attempt/<int:user_quest_attempt_id>", UserQuestQuestionAttemptByUserQuestAttemptView.as_view(), name='UserQuestQuestionAttemptByUserQuestAttempt-by-user-quest-attempt'),
+
+    path("AttemptAnswerRecord/", AttemptAnswerRecordListCreateView.as_view(), name='AttemptAnswerRecord-list-create'),
+    path("AttemptAnswerRecord/<int:pk>/", AttemptAnswerRecordManageView.as_view(), name='AttemptAnswerRecord-retrieve-update-destroy'),
+
     path("UserCourseCompletion/", UserCourseCompletionListCreateView.as_view(), name='UserCourseCompletion-list-create'),
     path("UserCourseCompletion/<int:pk>/", UserCourseCompletionManageView.as_view(), name='UserCourseCompletion-retrieve-update-destroy'),
     path("Badge/", BadgeListCreateView.as_view(), name='Badge-list-create'),

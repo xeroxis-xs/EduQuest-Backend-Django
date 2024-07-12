@@ -12,6 +12,7 @@ from .models import (
     Answer,
     UserQuestAttempt,
     UserQuestQuestionAttempt,
+    AttemptAnswerRecord,
     UserCourseCompletion,
     Badge
 )
@@ -25,6 +26,7 @@ from .serializers import (
     AnswerSerializer,
     UserQuestAttemptSerializer,
     UserQuestQuestionAttemptSerializer,
+    AttemptAnswerRecordSerializer,
     UserCourseCompletionSerializer,
     BadgeSerializer
 )
@@ -145,7 +147,7 @@ class QuestionByQuestView(generics.ListAPIView):
 
     def get_queryset(self):
         quest_id = self.kwargs['quest_id']
-        return Question.objects.filter(from_quest=quest_id).order_by('-id')
+        return Question.objects.filter(from_quest=quest_id).order_by('number')
 
 
 class AnswerListCreateView(generics.ListCreateAPIView):
@@ -186,6 +188,16 @@ class UserQuestAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserQuestAttemptSerializer
 
 
+class UserQuestAttemptByUserQuestView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserQuestAttemptSerializer
+
+    def get_queryset(self):
+        quest_id = self.kwargs['quest_id']
+        user_id = self.kwargs['user_id']
+        return UserQuestAttempt.objects.filter(user=user_id, quest=quest_id).order_by('-id')
+
+
 class UserQuestQuestionAttemptListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -198,6 +210,29 @@ class UserQuestQuestionAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
     serializer_class = UserQuestQuestionAttemptSerializer
+
+
+class UserQuestQuestionAttemptByUserQuestAttemptView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserQuestQuestionAttemptSerializer
+
+    def get_queryset(self):
+        user_quest_attempt_id = self.kwargs['user_quest_attempt_id']
+        return UserQuestQuestionAttempt.objects.filter(user_quest_attempt=user_quest_attempt_id).order_by('-id')
+
+
+class AttemptAnswerRecordListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = AttemptAnswerRecord.objects.all().order_by('-id')
+    serializer_class = AttemptAnswerRecordSerializer
+
+
+class AttemptAnswerRecordManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = AttemptAnswerRecord.objects.all().order_by('-id')
+    serializer_class = AttemptAnswerRecordSerializer
 
 
 class UserCourseCompletionListCreateView(generics.ListCreateAPIView):

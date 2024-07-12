@@ -1,10 +1,11 @@
+import datetime
 import random
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from faker import Faker
 from ...models import EduquestUser, AcademicYear, Term, Course, Quest, Question, Answer, UserQuestAttempt, \
-    UserQuestQuestionAttempt, UserCourseCompletion, Badge
+    UserQuestQuestionAttempt, AttemptAnswerRecord, UserCourseCompletion, Badge
 
 User = get_user_model()
 fake = Faker()
@@ -21,13 +22,13 @@ class Command(BaseCommand):
         self.create_badges()
 
     def clear_db(self):
-        eduquestUsers = EduquestUser.objects.filter(id__gt=1)
+        eduquestUsers = EduquestUser.objects.filter(id__gt=2)
         eduquestUsers.delete()
         AcademicYear.objects.all().delete()
         print("Cleared all tables")
 
     def create_users(self):
-        for _ in range(5):
+        for _ in range(2):
             user = EduquestUser.objects.create(
                 username=f"#{fake.name().upper()}#",
                 email=f"{fake.user_name().upper()}@e.ntu.edu.sg",
@@ -67,7 +68,7 @@ class Command(BaseCommand):
                             organiser=random.choice(User.objects.all())
                         )
                         number = 1
-                        for question_num in range(1, random.randint(1, 4)):
+                        for question_num in range(1, random.randint(1, 6)):
                             question = Question.objects.create(
                                 from_quest=quest,
                                 text=fake.sentence(),
@@ -85,26 +86,40 @@ class Command(BaseCommand):
 
     def create_attempts(self):
         for user in User.objects.filter(id__gt=1):
+            # For each user, attempt a random number of quests
+            # Not all users will attempt all quests, some may not attempt any
             for quest in Quest.objects.all():
-                total_time_taken = 0
-                user_quest_attempt = UserQuestAttempt.objects.create(
-                    user=user,
-                    quest=quest,
-                    is_first_attempt=True,
-                    is_perfect_score=random.choice([True, False])
-                )
-                for question in quest.questions.all():
-                    time_taken = random.randint(10000, 30000)
-                    total_time_taken += time_taken
-                    UserQuestQuestionAttempt.objects.create(
-                        user_quest_attempt=user_quest_attempt,
-                        question=question,
-                        score=random.randint(0, question.max_score),
-                        time_taken=time_taken
+                if random.choice([True, False]):
+                    # Create a new attempt for a quest
+                    total_time_taken = 0
+                    first_attempted_on = timezone.make_aware(fake.date_time_this_month())
+                    user_quest_attempt = UserQuestAttempt.objects.create(
+                        user=user,
+                        quest=quest,
+                        first_attempted_on=first_attempted_on,
+                        last_attempted_on=first_attempted_on + timezone.timedelta(days=random.randint(1, 7)),
+                        graded=False,
+                        time_taken=0
                     )
-                user_quest_attempt.total_time_taken = total_time_taken
-                user_quest_attempt.save()
-                print(f"Created attempt for user: {user.username}, quest: {quest.name}")
+                    # For each question in the quest, create a question attempt
+                    for question in quest.questions.all():
+                        # Create a new attempt for every question
+                        # time_taken = random.randint(10000, 30000)
+                        # total_time_taken += time_taken
+                        user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
+                            user_quest_attempt=user_quest_attempt,
+                            question=question,
+                            score_achieved=0
+                        )
+                        for answer in question.answers.all():
+                            # Some questions may not have any answers selected
+                            if random.choice([True, False]):
+                                AttemptAnswerRecord.objects.create(
+                                    user_quest_question_attempt=user_quest_question_attempt,
+                                    answer=answer
+                                )
+
+                        print(f"Created attempt for user: {user.username}, quest: {quest.name}")
 
     def create_badges(self):
         badge_types = [

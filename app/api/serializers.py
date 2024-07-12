@@ -11,6 +11,7 @@ from .models import (
     Answer,
     UserQuestAttempt,
     UserQuestQuestionAttempt,
+    AttemptAnswerRecord,
     UserCourseCompletion,
     Badge
 )
@@ -140,16 +141,16 @@ class QuestSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-
-class QuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Question
-        fields = '__all__'
-
-
 class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
+        fields = '__all__'
+
+
+class QuestionSerializer(serializers.ModelSerializer):
+    answers = AnswerSerializer(many=True, read_only=True, required=False)
+    class Meta:
+        model = Question
         fields = '__all__'
 
 
@@ -159,7 +160,16 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class AttemptAnswerRecordSerializer(serializers.ModelSerializer):
+    answer = AnswerSerializer()
+    class Meta:
+        model = AttemptAnswerRecord
+        fields = '__all__'
+
+
 class UserQuestQuestionAttemptSerializer(serializers.ModelSerializer):
+    selected_answers = AttemptAnswerRecordSerializer(many=True, read_only=True, required=False)
+    question = QuestionSerializer()
     class Meta:
         model = UserQuestQuestionAttempt
         fields = '__all__'
