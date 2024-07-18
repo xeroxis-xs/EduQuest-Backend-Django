@@ -2,6 +2,8 @@ from django.urls import path, re_path
 from .views import (
     EduquestUserListCreateView,
     EduquestUserManageView,
+    ImageListCreateView,
+    ImageManageView,
     AcademicYearListCreateView,
     AcademicYearManageView,
     TermListCreateView,
@@ -9,6 +11,7 @@ from .views import (
     CourseListCreateView,
     CourseManageView,
     CourseByTermView,
+    CourseEnrollmentAPIView,
     QuestListCreateView,
     QuestManageView,
     QuestByCourseView,
@@ -23,6 +26,7 @@ from .views import (
     UserQuestAttemptByUserQuestView,
     UserQuestQuestionAttemptListCreateView,
     UserQuestQuestionAttemptManageView,
+    BulkUpdateUserQuestQuestionAttemptView,
     AttemptAnswerRecordListCreateView,
     AttemptAnswerRecordManageView,
     UserQuestQuestionAttemptByUserQuestAttemptView,
@@ -35,13 +39,20 @@ from .views import (
 urlpatterns = [
     path("EduquestUser/", EduquestUserListCreateView.as_view(), name='EduquestUser-list-create'),
     path("EduquestUser/<str:email>/", EduquestUserManageView.as_view(), name='EduquestUser-retrieve-update-destroy'),
+
+    path("Image/", ImageListCreateView.as_view(), name='Image-list-create'),
+    path("Image/<int:pk>/", ImageManageView.as_view(), name='Image-retrieve-update-destroy'),
+
     path("AcademicYear/", AcademicYearListCreateView.as_view(), name='AcademicYear-list-create'),
     path("AcademicYear/<int:pk>/", AcademicYearManageView.as_view(), name='AcademicYear-retrieve-update-destroy'),
     path("Term/", TermListCreateView.as_view(), name='Term-list-create'),
     path("Term/<int:pk>/", TermManageView.as_view(), name='Term-retrieve-update-destroy'),
+
     path("Course/", CourseListCreateView.as_view(), name='Course-list-create'),
     path("Course/<int:pk>/", CourseManageView.as_view(), name='Course-retrieve-update-destroy'),
     path("Course/by-term/<int:term_id>/", CourseByTermView.as_view(), name='Course-by-term'),
+    path("Course/<int:course_id>/enroll/", CourseEnrollmentAPIView.as_view(), name='course-enroll'),
+
     path("Quest/", QuestListCreateView.as_view(), name='Quest-list-create'),
     path("Quest/<int:pk>/", QuestManageView.as_view(), name='Quest-retrieve-update-destroy'),
     path("Quest/by-course/<int:course_id>/", QuestByCourseView.as_view(), name='Quest-by-course'),
@@ -59,6 +70,7 @@ urlpatterns = [
     path("UserQuestQuestionAttempt/", UserQuestQuestionAttemptListCreateView.as_view(), name='UserQuestQuestionAttempt-list-create'),
     path("UserQuestQuestionAttempt/<int:pk>/", UserQuestQuestionAttemptManageView.as_view(), name='UserQuestQuestionAttempt-retrieve-update-destroy'),
     path("UserQuestQuestionAttempt/by-user-quest-attempt/<int:user_quest_attempt_id>", UserQuestQuestionAttemptByUserQuestAttemptView.as_view(), name='UserQuestQuestionAttemptByUserQuestAttempt-by-user-quest-attempt'),
+    path('UserQuestQuestionAttempt/bulk-update/', BulkUpdateUserQuestQuestionAttemptView.as_view(), name='bulk-update-user-quest-question-attempt'),
 
     path("AttemptAnswerRecord/", AttemptAnswerRecordListCreateView.as_view(), name='AttemptAnswerRecord-list-create'),
     path("AttemptAnswerRecord/<int:pk>/", AttemptAnswerRecordManageView.as_view(), name='AttemptAnswerRecord-retrieve-update-destroy'),

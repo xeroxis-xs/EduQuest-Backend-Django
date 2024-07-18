@@ -1,10 +1,9 @@
-import datetime
 import random
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from faker import Faker
-from ...models import EduquestUser, AcademicYear, Term, Course, Quest, Question, Answer, UserQuestAttempt, \
+from ...models import EduquestUser, Image, AcademicYear, Term, Course, Quest, Question, Answer, UserQuestAttempt, \
     UserQuestQuestionAttempt, AttemptAnswerRecord, UserCourseCompletion, Badge
 
 User = get_user_model()
@@ -17,6 +16,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.clear_db()
         self.create_users()
+        self.create_images()
         self.create_academic_years_terms_courses_quests_questions()
         self.create_attempts()
         self.create_badges()
@@ -24,11 +24,12 @@ class Command(BaseCommand):
     def clear_db(self):
         eduquestUsers = EduquestUser.objects.filter(id__gt=2)
         eduquestUsers.delete()
+        Image.objects.all().delete()
         AcademicYear.objects.all().delete()
         print("Cleared all tables")
 
     def create_users(self):
-        for _ in range(2):
+        for _ in range(4):
             user = EduquestUser.objects.create(
                 username=f"#{fake.name().upper()}#",
                 email=f"{fake.user_name().upper()}@e.ntu.edu.sg",
@@ -38,6 +39,16 @@ class Command(BaseCommand):
                 is_staff=False
             )
             print(f"Created user: {user.username}")
+
+    def create_images(self):
+        image_names = ["Cloud Computing", "Data Science", "Machine Learning and AI",
+                       "Computer Architecture", "Cyber Security", "Data Structure and Algorithm",
+                       "Database", "Multiple Choice"]
+        image_filenames = ["cloud_computing.svg", "data_science.svg", "machine_learning_and_ai.svg",
+                           "computer_architecture.svg", "cyber_security.svg", "data_structure_and_algorithm.svg",
+                           "database.svg", "multiple_choice.svg"]
+        for i in range(len(image_names)):
+            Image.objects.create(name=image_names[i], filename=image_filenames[i])
 
     def create_academic_years_terms_courses_quests_questions(self):
         for year in range(2023, 2025):
@@ -50,22 +61,33 @@ class Command(BaseCommand):
                     start_date=start_date,
                     end_date=start_date + timezone.timedelta(days=90)
                 )
-                for course_num in range(1000, random.randint(1000, 1006)):
+                for course_name in ["Cloud Computing", "Data Science", "Machine Learning and AI",
+                                    "Computer Architecture", "Cyber Security", "Data Structure and Algorithm",
+                                    "Database"]:
                     course = Course.objects.create(
                         term=term,
-                        name=f"Course {fake.company()}",
-                        code=f"CS{course_num}",
+                        name=f"{course_name}",
+                        code=f"CS{random.randint(1000, 1006)}",
                         description=fake.text(max_nb_chars=150),
-                        status="Active"
+                        status="Active",
+                        image=Image.objects.get(name=course_name)
                     )
+                    # Enroll users in the course
+                    all_users = list(EduquestUser.objects.all())
+                    num_users_to_enroll = random.randint(1, len(all_users))  # Decide how many users to enroll
+                    users_to_enroll = random.sample(all_users, num_users_to_enroll)
+                    for user in users_to_enroll:
+                        course.enrolled_users.add(user)
+                    # Continue with quest and question creation
                     for quest_num in range(0, random.randint(1, 5)):
                         quest = Quest.objects.create(
                             from_course=course,
                             name=f"Quest {quest_num}",
                             description=fake.text(),
-                            type="Quiz",
+                            type="Multiple Choice",
                             status="Active",
-                            organiser=random.choice(User.objects.all())
+                            organiser=User.objects.get(id=1),
+                            image=Image.objects.get(name="Multiple Choice")
                         )
                         number = 1
                         for question_num in range(1, random.randint(1, 6)):
@@ -73,7 +95,7 @@ class Command(BaseCommand):
                                 from_quest=quest,
                                 text=fake.sentence(),
                                 number=number,
-                                max_score=10
+                                max_score=random.randint(1, 5)
                             )
                             number += 1
                             for _ in range(4):
@@ -86,40 +108,39 @@ class Command(BaseCommand):
 
     def create_attempts(self):
         for user in User.objects.filter(id__gt=1):
-            # For each user, attempt a random number of quests
-            # Not all users will attempt all quests, some may not attempt any
-            for quest in Quest.objects.all():
-                if random.choice([True, False]):
-                    # Create a new attempt for a quest
-                    total_time_taken = 0
-                    first_attempted_on = timezone.make_aware(fake.date_time_this_month())
-                    user_quest_attempt = UserQuestAttempt.objects.create(
-                        user=user,
-                        quest=quest,
-                        first_attempted_on=first_attempted_on,
-                        last_attempted_on=first_attempted_on + timezone.timedelta(days=random.randint(1, 7)),
-                        graded=False,
-                        time_taken=0
-                    )
-                    # For each question in the quest, create a question attempt
-                    for question in quest.questions.all():
-                        # Create a new attempt for every question
-                        # time_taken = random.randint(10000, 30000)
-                        # total_time_taken += time_taken
-                        user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
-                            user_quest_attempt=user_quest_attempt,
-                            question=question,
-                            score_achieved=0
-                        )
-                        for answer in question.answers.all():
-                            # Some questions may not have any answers selected
-                            if random.choice([True, False]):
-                                AttemptAnswerRecord.objects.create(
-                                    user_quest_question_attempt=user_quest_question_attempt,
-                                    answer=answer
+            for course in Course.objects.all():
+                if user in course.enrolled_users.all():
+                    for quest in Quest.objects.filter(from_course=course):
+                        # Check if an attempt for this quest by this user already exists
+                        attempt_exists = UserQuestAttempt.objects.filter(user=user, quest=quest).exists()
+                        if not attempt_exists and random.choice([True, False]):
+                            # Create a new attempt for a quest
+                            first_attempted_on = timezone.make_aware(fake.date_time_this_month())
+                            last_attempted_on = first_attempted_on + timezone.timedelta(days=random.randint(1, 7))
+                            user_quest_attempt = UserQuestAttempt.objects.create(
+                                user=user,
+                                quest=quest,
+                                first_attempted_on=first_attempted_on,
+                                last_attempted_on=last_attempted_on,
+                                submitted=False,
+                                time_taken=(last_attempted_on - first_attempted_on).total_seconds()*1000
+                            )
+                            # For each question in the quest, create a question attempt
+                            for question in quest.questions.all():
+                                user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
+                                    user_quest_attempt=user_quest_attempt,
+                                    question=question,
+                                    submitted=False,
+                                    score_achieved=0
                                 )
-
-                        print(f"Created attempt for user: {user.username}, quest: {quest.name}")
+                                for answer in question.answers.all():
+                                    # Create answer record for every answer
+                                    AttemptAnswerRecord.objects.create(
+                                        user_quest_question_attempt=user_quest_question_attempt,
+                                        answer=answer,
+                                        is_selected=random.choice([True, False])
+                                    )
+                            print(f"Created attempt for user: {user.username}, quest: {quest.name}")
 
     def create_badges(self):
         badge_types = [
