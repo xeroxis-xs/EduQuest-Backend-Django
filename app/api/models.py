@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from .utils import split_full_name
 from django.db.models import Sum
 
@@ -9,9 +10,22 @@ class EduquestUser(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    # Custom validator example: Allow letters, numbers, and selected special characters
+    # username_validator = RegexValidator(
+    #     regex=r'^[\w.@+#\s-]+$',
+    #     message="Enter a valid username. This value may contain only letters, numbers, spaces, and @/./+/-/_/# characters."
+    # )
+    # username = models.CharField(
+    #     max_length=150,
+    #     unique=True,
+    #     validators=[username_validator],  # Apply the custom validator
+    #     error_messages={
+    #         'unique': "A user with that username already exists.",
+    #     },
+    # )
 
     def __str__(self):
-        return self.username
+        return f"{self.id}"
 
     def save(self, *args, **kwargs):
         if not self.pk:  # Only set default nickname on initial creation
@@ -63,8 +77,9 @@ class Quest(models.Model):
     from_course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quests')
     name = models.CharField(max_length=100)
     description = models.TextField()
-    type = models.CharField(max_length=50)  # Quiz
+    type = models.CharField(max_length=50)  # EduQuest, Kahoot!, WooClap
     status = models.CharField(max_length=50)  # Ongoing, Upcoming, Completed
+    max_attempts = models.PositiveIntegerField(default=1)
     organiser = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='quests_organised')
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -119,6 +134,7 @@ class UserQuestAttempt(models.Model):
     # Calculate the total score achieved by the user for all questions in a quest
     def total_score_achieved(self):
         return self.question_attempts.aggregate(total_score_achieved=Sum('score_achieved'))['total_score_achieved'] or 0
+
 
 class UserQuestQuestionAttempt(models.Model):
     """

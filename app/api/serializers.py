@@ -30,10 +30,16 @@ class EduquestUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         username = validated_data['username']
+        validated_data['email'] = validated_data['email'].upper()
         nickname = username.replace("#", "")
         first_name, last_name = split_full_name(nickname)
         # Default handling if nickname is not provided
-        user = EduquestUser.objects.create(first_name=first_name, last_name=last_name, nickname=nickname, **validated_data)
+        user = EduquestUser.objects.create(
+            first_name=first_name,
+            last_name=last_name,
+            nickname=nickname,
+            **validated_data
+        )
         return user
 
     def update(self, instance, validated_data):
@@ -152,6 +158,7 @@ class QuestSerializer(serializers.ModelSerializer):
         enrolled_users_data = from_course_data.pop('enrolled_users')
         course_image_data = from_course_data.pop('image')
         organiser_data = validated_data.pop('organiser')
+        # organiser_data.pop('username')
         image_data = validated_data.pop('image')
 
         academic_year = AcademicYear.objects.get(**academic_year_data)
@@ -163,7 +170,12 @@ class QuestSerializer(serializers.ModelSerializer):
         image = Image.objects.get(**image_data)
 
         # Create the Quest instance with the retrieved Course and EduquestUser
-        quest = Quest.objects.create(from_course=from_course, organiser=organiser, image=image, **validated_data)
+        quest = Quest.objects.create(
+            from_course=from_course,
+            organiser=organiser,
+            image=image,
+            **validated_data
+        )
 
         return quest
 
@@ -197,12 +209,39 @@ class AnswerSerializer(serializers.ModelSerializer):
         }
 
 
+class BulkQuestionSerializer(serializers.ListSerializer):
+    def update(self, instances, validated_data):
+        for instance in instances:
+            print("Instance:", instance.id)  # Debugging
+        # Create a mapping of instance IDs to instances themselves
+        instance_mapping = {instance.id: instance for instance in instances}
+
+        print("Instance Mapping:", instance_mapping)  # Debugging
+
+        # Process the validated data
+        for item in validated_data:
+            print("Validated Item:", item)  # Debugging
+            instance_id = item.get('id', None)
+            if instance_id is not None and instance_id in instance_mapping:
+                print("Instance ID found:", instance_id)  # Debugging
+                print("Instance:", instance_mapping[instance_id])  # Debugging
+                self.child.update(instance_mapping[instance_id], item)
+            else:
+                print("Instance ID not found:", instance_id)  # Debugging
+                # Handle insertions or raise an exception
+                pass
+
+        # Optionally, handle deletions
+        return instances
+
+
 class QuestionSerializer(serializers.ModelSerializer):
     answers = AnswerSerializer(many=True)
     id = serializers.IntegerField(required=False)  # Explicitly include the id field
     class Meta:
         model = Question
         fields = '__all__'
+        list_serializer_class = BulkQuestionSerializer
 
     # Create question with new answers (without specifying answer IDs)
     def create(self, validated_data):
@@ -217,27 +256,22 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         answers_data = validated_data.pop('answers', [])
-        instance.text = validated_data.get('text', instance.text)
-        instance.number = validated_data.get('number', instance.number)
-        instance.max_score = validated_data.get('max_score', instance.max_score)
-        instance.from_quest_id = validated_data.get('from_quest', instance.from_quest.id)
 
-        instance.save()
-
-        # Update or create answers
-        # Note: Do not specify 'question' in each answer_data
+        # Handle nested answers
         for answer_data in answers_data:
             answer_id = answer_data.get('id')
             if answer_id:
-                # Update existing answer
-                answer = Answer.objects.get(id=answer_id, question=instance)
-                answer.text = answer_data.get('text', answer.text)
-                answer.is_correct = answer_data.get('is_correct', answer.is_correct)
-                answer.save()
+                answer_instance = Answer.objects.get(id=answer_id)
+                answer_instance.text = answer_data.get('text', answer_instance.text)
+                answer_instance.is_correct = answer_data.get('is_correct', answer_instance.is_correct)
+                answer_instance.save()
             else:
-                # Create new answer for this question
                 Answer.objects.create(question=instance, **answer_data)
 
+        # Update other fields as usual
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
         return instance
 
 
@@ -333,8 +367,6 @@ class BulkUserQuestQuestionAttemptSerializer(serializers.ListSerializer):
             print("Validated Item:", item)  # Debugging
             instance_id = item.get('id', None)
             if instance_id is not None and instance_id in instance_mapping:
-                item.score_achieved = 100  # Set score_achieved to 100 for testing
-                print(item.score_achieved)  # Debugging
                 self.child.update(instance_mapping[instance_id], item)
             else:
                 print("Instance ID not found:", instance_id)  # Debugging

@@ -43,10 +43,10 @@ class Command(BaseCommand):
     def create_images(self):
         image_names = ["Cloud Computing", "Data Science", "Machine Learning and AI",
                        "Computer Architecture", "Cyber Security", "Data Structure and Algorithm",
-                       "Database", "Multiple Choice"]
+                       "Database", "Multiple Choice", "Wooclap", "Kahoot"]
         image_filenames = ["cloud_computing.svg", "data_science.svg", "machine_learning_and_ai.svg",
                            "computer_architecture.svg", "cyber_security.svg", "data_structure_and_algorithm.svg",
-                           "database.svg", "multiple_choice.svg"]
+                           "database.svg", "multiple_choice.svg", "wooclap.svg", "kahoot.svg"]
         for i in range(len(image_names)):
             Image.objects.create(name=image_names[i], filename=image_filenames[i])
 
@@ -86,6 +86,7 @@ class Command(BaseCommand):
                             description=fake.text(),
                             type="Multiple Choice",
                             status="Active",
+                            max_attempts=random.randint(1, 3),
                             organiser=User.objects.get(id=1),
                             image=Image.objects.get(name="Multiple Choice")
                         )

@@ -86,9 +86,9 @@ class CustomJWTAuthentication(JWTAuthentication):
             last_login = sgt_datetime.astimezone(utc_timezone)
 
             user, created = EduquestUser.objects.get_or_create(
-                email=email,
+                email=email.upper(),
                 defaults={
-                    'email': email,
+                    'email': email.upper(),
                     'username': username,
                     'nickname': username,
                     'first_name': first_name,
