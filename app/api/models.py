@@ -102,7 +102,7 @@ class Question(models.Model):
     max_score = models.FloatField(default=1)
 
     def __str__(self):
-        return f"{self.text} in Quest ID {self.from_quest.name.id}"
+        return f"{self.text} from quest {self.from_quest}"
 
 
 class Answer(models.Model):

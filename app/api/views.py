@@ -255,28 +255,9 @@ class QuestImportView(APIView):
                                         selected_answer.is_selected = True
                                         selected_answer.save()
 
-
             return Response(questions_serializer, status=status.HTTP_201_CREATED)
         else:
             return Response(quest_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # Process each row in the DataFrame
-        # for _, row in df.iterrows():
-        #     # Extract data for a quest attempt from each row
-        #     user_id = row['user_id']
-        #     quest_id = row['quest_id']
-        #     attempt_data = row['attempt_data']  # Adjust field names based on your Excel file structure
-        #
-        #     # Create a QuestAttempt object (adjust according to your model fields)
-        #     UserQuestAttempt.objects.create(
-        #         user_id=user_id,
-        #         quest_id=quest_id,
-        #         data=attempt_data
-        #     )
-
-
-
-        return JsonResponse({"message": "Quest attempts processed successfully."}, status=200)
 
 
 class QuestListCreateView(generics.ListCreateAPIView):
@@ -340,9 +321,6 @@ class BulkUpdateQuestionView(APIView):
             if len(instances) != len(ids):
                 return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            for instance in instances:
-                print(f"Instance: {instance.text}")
-            print(f"Serializer validated data: {serializer.validated_data}")
             serializer.update(instances, serializer.validated_data)
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
