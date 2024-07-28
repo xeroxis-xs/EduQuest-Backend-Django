@@ -62,7 +62,6 @@ class Term(models.Model):
 
 class Course(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='courses')
-    enrolled_users = models.ManyToManyField(EduquestUser, related_name='enrolled_courses', blank=True)
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=100)
     description = models.TextField()
@@ -71,6 +70,16 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.term} - {self.code}"
+
+
+class UserCourse(models.Model):
+    user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='enrolled_courses')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrolled_users')
+    enrolled_on = models.DateTimeField(auto_now_add=True)
+    completed_on = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} enrolled {self.course.name}"
 
 
 class Quest(models.Model):
@@ -122,11 +131,9 @@ class UserQuestAttempt(models.Model):
     user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='attempted_quests')
     quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='attempted_by')
     # When the user first attempted the quest, automatically populate the date and time
+    all_questions_submitted = models.BooleanField(default=False)
     first_attempted_on = models.DateTimeField(auto_now_add=True)
-    last_attempted_on = models.DateTimeField(null=True, blank=True)
-    # If the user has submitted the quest from clicking the submit button, this will be set to True
-    submitted = models.BooleanField(default=False)
-    time_taken = models.PositiveIntegerField(default=0)  # in milliseconds
+    last_attempted_on = models.DateTimeField()
 
     def __str__(self):
         return f"{self.user.username} - {self.quest.name} - First attempt on {self.first_attempted_on}"
@@ -134,6 +141,14 @@ class UserQuestAttempt(models.Model):
     # Calculate the total score achieved by the user for all questions in a quest
     def total_score_achieved(self):
         return self.question_attempts.aggregate(total_score_achieved=Sum('score_achieved'))['total_score_achieved'] or 0
+
+    def time_taken(self):
+        # Calculate the total time taken by subtracting the first_attempted_on from the last_attempted_on
+        time_difference = self.last_attempted_on - self.first_attempted_on
+        # If negative return 0
+        if time_difference.total_seconds() < 0:
+            return 0
+        return time_difference.total_seconds() * 1000  # Convert to milliseconds
 
 
 class UserQuestQuestionAttempt(models.Model):
@@ -163,63 +178,34 @@ class AttemptAnswerRecord(models.Model):
 
 
     def __str__(self):
-        return f"{self.user_quest_question_attempt.user_quest_attempt.user.username} - {self.answer.text} - {self.is_correct}"
-
-
-class UserCourseCompletion(models.Model):
-    user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='completed_courses')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='completed_by')
-    completed_on = models.DateTimeField(null=True, blank=True)
-    enrolled_on = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ('user', 'course')
-
-    def __str__(self):
-        return f"{self.user.username} - {self.course.name}"
+        return f"{self.user_quest_question_attempt.user_quest_attempt.user.username} - {self.answer.text}"
 
 
 class Badge(models.Model):
-    BADGE_TYPES = [
-        ('First Attempt', 'First Attempt Badge'),
-        ('Completionist', 'Completionist Badge'),
-        ('Expert', 'Expert Badge'),
-        ('Speedster', 'Speedster Badge'),
-        ('Perfectionist', 'Perfectionist Badge'),
-    ]
-
-    name = models.CharField(max_length=50, choices=BADGE_TYPES)
+    name = models.CharField(max_length=50)
     description = models.TextField()
     type = models.CharField(max_length=50)  # Course Type or Quest Type
-    earned_by = models.ManyToManyField(EduquestUser, related_name='badges_earned')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True, related_name='badges_awarded')
-    quest = models.ForeignKey(Quest, on_delete=models.CASCADE, null=True, blank=True, related_name='badges_awarded')
+    image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class UserCourseBadge(models.Model):
+    # user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_courses')
+    badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to_course_completion')
+    course_completed = models.ForeignKey(UserCourse, on_delete=models.CASCADE, related_name='earned_course_badges')
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        if self.quest:
-            return f"{self.name} - Quest: {self.quest.name}"
-        else:
-            return f"{self.name} - Course: {self.course.name}"
+        return f"Earned {self.badge} from completing Course {self.course_completed} "
 
 
+class UserQuestBadge(models.Model):
+    # user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_quests')
+    badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to_quest_attempt')
+    quest_attempted = models.ForeignKey(UserQuestAttempt, on_delete=models.CASCADE, related_name='earned_quest_badges')
+    awarded_date = models.DateTimeField(auto_now_add=True)
 
-
-# class UserEarnBadgeQuest(models.Model):
-#     user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_quests')
-#     badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to')
-#     quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='earned_badges')
-#     awarded_date = models.DateTimeField(auto_now_add=True)
-#
-#     def __str__(self):
-#         return f"{self.user.username} - earned {self.badge} from Quest {self.quest} on {self.awarded_date}"
-#
-#
-# class UserEarnBadgeCourse(models.Model):
-#     user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_courses')
-#     badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to')
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='earned_badges')
-#     awarded_date = models.DateTimeField(auto_now_add=True)
-#
-#     def __str__(self):
-#         return f"{self.user.username} - earned {self.badge} from Course {self.course} on {self.awarded_date}"
+    def __str__(self):
+        return f"Earned {self.badge} from attempting Quest {self.quest_attempted}"

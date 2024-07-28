@@ -45,13 +45,13 @@ class Excel():
         return self.question_list
 
     def get_users(self):
-        user = dict()
         i = 0
         while not pd.isnull(self.main_results_sheet.iloc[i, 0]):
+            user = dict()
             user['email'] = self.main_results_sheet.iloc[i, 4].upper()
             user['username'] = self.main_results_sheet.iloc[i, 1]
-            self.user_list.append(user)
             i += 1
+            self.user_list.append(user)
         return self.user_list
 
     def get_user_question_attempts(self, email):

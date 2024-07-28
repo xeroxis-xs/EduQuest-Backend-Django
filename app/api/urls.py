@@ -11,7 +11,8 @@ from .views import (
     CourseListCreateView,
     CourseManageView,
     CourseByTermView,
-    CourseEnrollmentAPIView,
+    UserCourseListCreateView,
+    UserCourseManageView,
     QuestImportView,
     QuestListCreateView,
     QuestManageView,
@@ -26,16 +27,23 @@ from .views import (
     UserQuestAttemptListCreateView,
     UserQuestAttemptManageView,
     UserQuestAttemptByUserQuestView,
+    UserQuestAttemptByQuestView,
+    BulkUpdateUserQuestAttemptView,
     UserQuestQuestionAttemptListCreateView,
     UserQuestQuestionAttemptManageView,
+    UserQuestQuestionAttemptByQuestView,
     BulkUpdateUserQuestQuestionAttemptView,
     AttemptAnswerRecordListCreateView,
     AttemptAnswerRecordManageView,
     UserQuestQuestionAttemptByUserQuestAttemptView,
-    UserCourseCompletionListCreateView,
-    UserCourseCompletionManageView,
     BadgeListCreateView,
     BadgeManageView,
+    UserQuestBadgeListCreateView,
+    UserQuestBadgeManageView,
+    UserQuestBadgeByUserView,
+    UserCourseBadgeListCreateView,
+    UserCourseBadgeManageView,
+    UserCourseBadgeByUserView,
 )
 
 urlpatterns = [
@@ -53,7 +61,9 @@ urlpatterns = [
     path("Course/", CourseListCreateView.as_view(), name='Course-list-create'),
     path("Course/<int:pk>/", CourseManageView.as_view(), name='Course-retrieve-update-destroy'),
     path("Course/by-term/<int:term_id>/", CourseByTermView.as_view(), name='Course-by-term'),
-    path("Course/<int:course_id>/enroll/", CourseEnrollmentAPIView.as_view(), name='course-enroll'),
+
+    path("UserCourse/", UserCourseListCreateView.as_view(), name='UserCourse-list-create'),
+    path("UserCourse/<int:pk>/", UserCourseManageView.as_view(), name='UserCourse-retrieve-update-destroy'),
 
     path("Quest/", QuestListCreateView.as_view(), name='Quest-list-create'),
     path("Quest/import/", QuestImportView.as_view(), name='Quest-import'),
@@ -72,17 +82,26 @@ urlpatterns = [
     path("UserQuestAttempt/", UserQuestAttemptListCreateView.as_view(), name='UserQuestAttempt-list-create'),
     path("UserQuestAttempt/<int:pk>/", UserQuestAttemptManageView.as_view(), name='UserQuestAttempt-retrieve-update-destroy'),
     path("UserQuestAttempt/by-user/<int:user_id>/by-quest/<int:quest_id>/", UserQuestAttemptByUserQuestView.as_view(), name='UserQuestAttempt-by-user-quest'),
+    path("UserQuestAttempt/by-quest/<int:quest_id>/", UserQuestAttemptByQuestView.as_view(), name='UserQuestAttempt-by-quest'),
+    path('UserQuestAttempt/bulk-update/', BulkUpdateUserQuestAttemptView.as_view(), name='bulk-update-user-quest-attempt'),
+
+    path("AttemptAnswerRecord/", AttemptAnswerRecordListCreateView.as_view(), name='AttemptAnswerRecord-list-create'),
+    path("AttemptAnswerRecord/<int:pk>/", AttemptAnswerRecordManageView.as_view(), name='AttemptAnswerRecord-retrieve-update-destroy'),
 
     path("UserQuestQuestionAttempt/", UserQuestQuestionAttemptListCreateView.as_view(), name='UserQuestQuestionAttempt-list-create'),
     path("UserQuestQuestionAttempt/<int:pk>/", UserQuestQuestionAttemptManageView.as_view(), name='UserQuestQuestionAttempt-retrieve-update-destroy'),
     path("UserQuestQuestionAttempt/by-user-quest-attempt/<int:user_quest_attempt_id>", UserQuestQuestionAttemptByUserQuestAttemptView.as_view(), name='UserQuestQuestionAttemptByUserQuestAttempt-by-user-quest-attempt'),
     path('UserQuestQuestionAttempt/bulk-update/', BulkUpdateUserQuestQuestionAttemptView.as_view(), name='bulk-update-user-quest-question-attempt'),
+    path('UserQuestQuestionAttempt/by-quest/<int:quest_id>', UserQuestQuestionAttemptByQuestView.as_view(), name='UserQuestQuestionAttempt-by-quest'),
 
-    path("AttemptAnswerRecord/", AttemptAnswerRecordListCreateView.as_view(), name='AttemptAnswerRecord-list-create'),
-    path("AttemptAnswerRecord/<int:pk>/", AttemptAnswerRecordManageView.as_view(), name='AttemptAnswerRecord-retrieve-update-destroy'),
-
-    path("UserCourseCompletion/", UserCourseCompletionListCreateView.as_view(), name='UserCourseCompletion-list-create'),
-    path("UserCourseCompletion/<int:pk>/", UserCourseCompletionManageView.as_view(), name='UserCourseCompletion-retrieve-update-destroy'),
     path("Badge/", BadgeListCreateView.as_view(), name='Badge-list-create'),
     path("Badge/<int:pk>/", BadgeManageView.as_view(), name='Badge-retrieve-update-destroy'),
+
+    path("UserQuestBadge/", UserQuestBadgeListCreateView.as_view(), name='UserQuestBadge-list-create'),
+    path("UserQuestBadge/<int:pk>/", UserQuestBadgeManageView.as_view(), name='UserQuestBadge-retrieve-update-destroy'),
+    path("UserQuestBadge/by-user/<int:user_id>/", UserQuestBadgeByUserView.as_view(), name='UserQuestBadge-by-user'),
+
+    path("UserCourseBadge/", UserCourseBadgeListCreateView.as_view(), name='UserCourseBadge-list-create'),
+    path("UserCourseBadge/<int:pk>/", UserCourseBadgeManageView.as_view(), name='UserCourseBadge-retrieve-update-destroy'),
+    path("UserCourseBadge/by-user/<int:user_id>/", UserCourseBadgeByUserView.as_view(), name='UserCourseBadge-by-user'),
 ]

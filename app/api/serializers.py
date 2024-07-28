@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .utils import split_full_name
+from collections import OrderedDict
 from django.utils import timezone
 from datetime import datetime
 from django.db import transaction
@@ -16,9 +17,25 @@ from .models import (
     UserQuestAttempt,
     UserQuestQuestionAttempt,
     AttemptAnswerRecord,
-    UserCourseCompletion,
-    Badge
+    UserCourse,
+    Badge,
+    UserQuestBadge,
+    UserCourseBadge,
 )
+
+
+class BulkSerializer(serializers.ListSerializer):
+    def update(self, instances, validated_data):
+        instance_mapping = {instance.id: instance for instance in instances}
+        for item in validated_data:
+            print("item:", item)  # Debugging
+            instance_id = item.get('id', None)
+            if instance_id is not None and instance_id in instance_mapping:
+                self.child.update(instance_mapping[instance_id], item)
+            else:
+                pass
+        # Optionally, handle deletions
+        return instances
 
 
 class EduquestUserSerializer(serializers.ModelSerializer):
@@ -87,43 +104,56 @@ class TermSerializer(serializers.ModelSerializer):
         return instance
 
 
+class UserCourseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserCourse
+        fields = '__all__'
+
+
 class CourseSerializer(serializers.ModelSerializer):
     term = TermSerializer()
     image = ImageSerializer()
+    enrolled_users = UserCourseSerializer(many=True, read_only=True, required=False)
 
     class Meta:
         model = Course
         fields = '__all__'
-        extra_kwargs = {
-            'enrolled_users': {'required': False}  # Make the enrolled_users field optional during create
-        }
 
+    # Course is created with empty enrolled_users
     def create(self, validated_data):
         term_data = validated_data.pop('term')
         image_data = validated_data.pop('image')
+        # Remove enrolled_users from validated_data if there is any
+        enrolled_users_data = validated_data.pop('enrolled_users', [])
 
         academic_year_data = term_data.pop('academic_year')
 
         # Retrieve AcademicYear
         academic_year = AcademicYear.objects.get(**academic_year_data)
-
         # Retrieve Term under the AcademicYear
         term = Term.objects.get(academic_year=academic_year, **term_data)
-
         # Retrieve Image
         image = Image.objects.get(**image_data)
 
-        # Create Course using the retrieved or newly created Term
-        course = Course.objects.create(term=term, image=image, **validated_data)
+        course = Course.objects.create(
+            term=term,
+            image=image,
+            **validated_data
+        )
         return course
 
+    # Do not update enrolled_users since it can be updated separately using UserCourseSerializer
     def update(self, instance, validated_data):
         term_data = validated_data.pop('term')
         image_data = validated_data.pop('image')
+        # Remove enrolled_users from validated_data if there
+        enrolled_users_data = validated_data.pop('enrolled_users', [])
+
         # Remove academic_year from term_data
         academic_year_data = term_data.pop('academic_year')
         term = Term.objects.get(**term_data)
         image = Image.objects.get(**image_data)
+
         instance.term = term
         instance.image = image
 
@@ -137,7 +167,6 @@ class QuestSerializer(serializers.ModelSerializer):
     from_course = CourseSerializer()
     organiser = EduquestUserSerializer()
     image = ImageSerializer()
-    participants = EduquestUserSerializer(many=True, read_only=True, required=False)
     total_max_score = serializers.SerializerMethodField(read_only=True)
     total_questions = serializers.SerializerMethodField(read_only=True)
 
@@ -153,9 +182,10 @@ class QuestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from_course_data = validated_data.pop('from_course')
+        print("from_course_data:", from_course_data)  # Debugging
+        enrolled_users_data = from_course_data.pop('enrolled_users', [])
         term_data = from_course_data.pop('term')
         academic_year_data = term_data.pop('academic_year')
-        enrolled_users_data = from_course_data.pop('enrolled_users')
         course_image_data = from_course_data.pop('image')
         organiser_data = validated_data.pop('organiser')
         # organiser_data.pop('username')
@@ -181,6 +211,7 @@ class QuestSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         from_course_data = validated_data.pop('from_course')
+        enrolled_users_data = from_course_data.pop('enrolled_users', [])
         course_image_data = from_course_data.pop('image')
         image_data = validated_data.pop('image')
         # Remove term from from_course_data
@@ -197,6 +228,7 @@ class QuestSerializer(serializers.ModelSerializer):
         return instance
 
 
+
 class AnswerSerializer(serializers.ModelSerializer):
     # Explicitly include the id field
     id = serializers.IntegerField(required=False)
@@ -209,42 +241,13 @@ class AnswerSerializer(serializers.ModelSerializer):
         }
 
 
-class BulkQuestionSerializer(serializers.ListSerializer):
-    def update(self, instances, validated_data):
-        # try:
-        #     print("Instances:", instances)  # Debugging
-        # except Exception as e:
-        #     print("Instances Error:", e)
-        # for instance in instances:
-        #     print("Instance id:", instance.id)  # Debugging
-        # Create a mapping of instance IDs to instances themselves
-        instance_mapping = {instance.id: instance for instance in instances}
-        # try:
-        #     print("Instance Mapping:", instance_mapping)  # Debugging
-        # except Exception as e:
-        #     print("Instance Mapping Error:", e)
-        # Process the validated data
-        for item in validated_data:
-            print("Validated Item:", item)  # Debugging
-            instance_id = item.get('id', None)
-            if instance_id is not None and instance_id in instance_mapping:
-                self.child.update(instance_mapping[instance_id], item)
-            else:
-                print("Instance ID not found:", instance_id)  # Debugging
-                # Handle insertions or raise an exception
-                pass
-
-        # Optionally, handle deletions
-        return instances
-
-
 class QuestionSerializer(serializers.ModelSerializer):
     answers = AnswerSerializer(many=True, required=False)
     id = serializers.IntegerField(required=False)  # Explicitly include the id field
     class Meta:
         model = Question
         fields = '__all__'
-        list_serializer_class = BulkQuestionSerializer
+        list_serializer_class = BulkSerializer
 
     # Create question with new answers (without specifying answer IDs)
     def create(self, validated_data):
@@ -282,14 +285,24 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class UserQuestAttemptSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
-    total_score_achieved = serializers.SerializerMethodField(required=False)
+    total_score_achieved = serializers.SerializerMethodField(required=False, read_only=True)
+    time_taken = serializers.SerializerMethodField(required=False, read_only=True)
 
     class Meta:
         model = UserQuestAttempt
         fields = '__all__'
+        list_serializer_class = BulkSerializer
 
     def get_total_score_achieved(self, obj):
+        if isinstance(obj, OrderedDict):
+            return None
         return obj.total_score_achieved()
+
+    def get_time_taken(self, obj):
+        if isinstance(obj, OrderedDict):
+            return None
+        return obj.time_taken()
+
 
     def create(self, validated_data):
         user_quest_attempt = UserQuestAttempt.objects.create(**validated_data)
@@ -317,12 +330,9 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
         return user_quest_attempt
 
     def update(self, instance, validated_data):
-        validated_data.pop('time_taken', None)  # Remove 'time_taken' from validated_data
-        # Use the latest 'last_attempted_on' from validated_data or the existing one if not provided
-        last_attempted_on = validated_data.get('last_attempted_on', instance.last_attempted_on)
-
-        # Calculate 'time_taken' using the chosen 'last_attempted_on' and 'first_attempted_on'
-        instance.time_taken = (last_attempted_on - instance.first_attempted_on).total_seconds() * 1000
+        # Exclude aggregated fields from the update process
+        validated_data.pop('total_score_achieved', None)
+        validated_data.pop('time_taken', None)
 
         # Update other fields as usual
         for attr, value in validated_data.items():
@@ -360,28 +370,6 @@ class AttemptAnswerRecordSerializer(serializers.ModelSerializer):
         return instance
 
 
-class BulkUserQuestQuestionAttemptSerializer(serializers.ListSerializer):
-    def update(self, instances, validated_data):
-        # Create a mapping of instance IDs to instances themselves
-        instance_mapping = {instance.id: instance for instance in instances}
-
-        print("Instance Mapping:", instance_mapping)  # Debugging
-
-        # Process the validated data
-        for item in validated_data:
-            print("Validated Item:", item)  # Debugging
-            instance_id = item.get('id', None)
-            if instance_id is not None and instance_id in instance_mapping:
-                self.child.update(instance_mapping[instance_id], item)
-            else:
-                print("Instance ID not found:", instance_id)  # Debugging
-                # Handle insertions or raise an exception
-                pass
-
-        # Optionally, handle deletions
-        return instances
-
-
 class UserQuestQuestionAttemptSerializer(serializers.ModelSerializer):
     selected_answers = AttemptAnswerRecordSerializer(many=True, required=False)
     question = QuestionSerializer(required=False)
@@ -390,7 +378,7 @@ class UserQuestQuestionAttemptSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserQuestQuestionAttempt
         fields = '__all__'
-        list_serializer_class = BulkUserQuestQuestionAttemptSerializer
+        list_serializer_class = BulkSerializer
 
     def create(self, validated_data):
         question_data = validated_data.pop('question')
@@ -434,13 +422,24 @@ class UserQuestQuestionAttemptSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserCourseCompletionSerializer(serializers.ModelSerializer):
+class BadgeSerializer(serializers.ModelSerializer):
+    image = ImageSerializer()
     class Meta:
-        model = UserCourseCompletion
+        model = Badge
         fields = '__all__'
 
 
-class BadgeSerializer(serializers.ModelSerializer):
+class UserQuestBadgeSerializer(serializers.ModelSerializer):
+    badge = BadgeSerializer()
+    quest_attempted = UserQuestAttemptSerializer()
     class Meta:
-        model = Badge
+        model = UserQuestBadge
+        fields = '__all__'
+
+
+class UserCourseBadgeSerializer(serializers.ModelSerializer):
+    badge = BadgeSerializer()
+    course_completed = UserCourseSerializer()
+    class Meta:
+        model = UserCourseBadge
         fields = '__all__'

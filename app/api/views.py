@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import JsonResponse
+from datetime import datetime
 import json
 from .excel import Excel
 from rest_framework.response import Response
@@ -15,14 +16,16 @@ from .models import (
     AcademicYear,
     Term,
     Course,
+    UserCourse,
     Quest,
     Question,
     Answer,
     UserQuestAttempt,
     UserQuestQuestionAttempt,
     AttemptAnswerRecord,
-    UserCourseCompletion,
-    Badge
+    Badge,
+    UserQuestBadge,
+    UserCourseBadge
 )
 from .serializers import (
     EduquestUserSerializer,
@@ -30,14 +33,16 @@ from .serializers import (
     AcademicYearSerializer,
     TermSerializer,
     CourseSerializer,
+    UserCourseSerializer,
     QuestSerializer,
     QuestionSerializer,
     AnswerSerializer,
     UserQuestAttemptSerializer,
     UserQuestQuestionAttemptSerializer,
     AttemptAnswerRecordSerializer,
-    UserCourseCompletionSerializer,
-    BadgeSerializer
+    BadgeSerializer,
+    UserQuestBadgeSerializer,
+    UserCourseBadgeSerializer
 )
 # from django.http import HttpResponse
 
@@ -118,19 +123,6 @@ class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CourseSerializer
 
 
-class CourseEnrollmentAPIView(APIView):
-    def post(self, request, course_id):
-        course = get_object_or_404(Course, id=course_id)
-        user_ids = request.data.get('user_ids', [])
-
-        # Fetch users and enroll them
-        users_to_enroll = EduquestUser.objects.filter(id__in=user_ids)
-        for user in users_to_enroll:
-            course.enrolled_users.add(user)
-
-        return Response({"message": "Users enrolled successfully."}, status=status.HTTP_200_OK)
-
-
 class CourseByTermView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CourseSerializer
@@ -140,10 +132,25 @@ class CourseByTermView(generics.ListAPIView):
         return Course.objects.filter(term=term_id).order_by('-id')
 
 
+class UserCourseListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourse.objects.all().order_by('-id')
+    serializer_class = UserCourseSerializer
+
+
+class UserCourseManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourse.objects.all().order_by('-id')
+    serializer_class = UserCourseSerializer
+
+
 class QuestImportView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
+
         excel_file = request.FILES.get('file')
         if not excel_file:
             return JsonResponse({"No file provided, please try again"}, status=400)
@@ -166,6 +173,9 @@ class QuestImportView(APIView):
             'image': json.loads(request.data.get('image')),
             'organiser': json.loads(request.data.get('organiser'))
         }
+        last_attempted_on = datetime.now()
+        course = Course.objects.get(id=quest_data['from_course']['id'])
+        print(course.id)
         # Create a Quest object
         quest_serializer = QuestSerializer(data=quest_data)
 
@@ -175,6 +185,9 @@ class QuestImportView(APIView):
             # Get the ID of the newly created Quest object
             new_quest_id = quest_serializer.data.get('id')
             from_course = quest_serializer.data.get('from_course')
+            print(from_course)
+            course = Course.objects.get(id=from_course['id'])
+            print(course.id)
 
             questions_serializer = []
             # Process each question in the questions_data list
@@ -201,14 +214,17 @@ class QuestImportView(APIView):
                         'nickname': user_data['username']
                     }
                 )
-                # Enroll the user in the course
-                course = Course.objects.get(id=from_course['id'])
-                course.enrolled_users.add(user.id)
+                # Enroll the users in the course if they are not already enrolled
+                UserCourse.objects.get_or_create(
+                    user=user,
+                    course=course
+                )
 
                 # Create a UserQuestAttempt object for each User
                 user_quest_attempt_data = {
                     'user': user.id,
-                    'quest': new_quest_id
+                    'quest': new_quest_id,
+                    'last_attempted_on': last_attempted_on,
                 }
                 user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
                 if user_quest_attempt_serializer.is_valid():
@@ -227,11 +243,12 @@ class QuestImportView(APIView):
                 for user_question_attempt in user_question_attempts:
                     print(f"User question attempt: {user_question_attempt.question.text}")
                     # Get the wooclap_questions_selected_answers for the user
-                    wooclap_questions_selected_answers = excel.get_user_question_attempts(user_data['email'])
+                    print(f"User: {user.email}")
+                    wooclap_questions_selected_answers = excel.get_user_question_attempts(user.email)
                     print(f"Wooclap questions selected answers: {wooclap_questions_selected_answers}")
                     # Iterate through each wooclap_question_selected_answers
                     for wooclap_question_selected_answers in wooclap_questions_selected_answers:
-                        print(f"Wooclap question selected answers: {wooclap_question_selected_answers}")
+                        # print(f"Wooclap question selected answers: {wooclap_question_selected_answers}")
                         # If the question in the wooclap_question_selected_answers matches
                         # the user_question_attempt question
                         """
@@ -251,7 +268,7 @@ class QuestImportView(APIView):
                                 for selected_answer in answer_records:
 
                                     if selected_answer.answer.text == wooclap_selected_answer:
-                                        print(f"Selected answer: {selected_answer.answer.text}")
+                                        # print(f"Selected answer: {selected_answer.answer.text}")
                                         selected_answer.is_selected = True
                                         selected_answer.save()
 
@@ -315,8 +332,7 @@ class BulkUpdateQuestionView(APIView):
             instances = Question.objects.filter(id__in=ids)
 
             # Add logging to debug
-            print(f"IDs to be updated: {ids}")
-            print(f"Instances found: {[instance.id for instance in instances]}")
+            print(f"Question Instances found: {[instance.id for instance in instances]}")
 
             if len(instances) != len(ids):
                 return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -374,6 +390,43 @@ class UserQuestAttemptByUserQuestView(generics.ListAPIView):
         return UserQuestAttempt.objects.filter(user=user_id, quest=quest_id).order_by('-id')
 
 
+class UserQuestAttemptByQuestView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserQuestAttemptSerializer
+
+    def get_queryset(self):
+        quest_id = self.kwargs['quest_id']
+        return UserQuestAttempt.objects.filter(quest=quest_id).order_by('-id')
+
+
+class UserQuestQuestionAttemptByQuestView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserQuestQuestionAttemptSerializer
+
+    def get_queryset(self):
+        quest_id = self.kwargs['quest_id']
+        user_quest_attempts = UserQuestAttempt.objects.filter(quest=quest_id)
+        return UserQuestQuestionAttempt.objects.filter(user_quest_attempt__in=user_quest_attempts).order_by('-id')
+
+
+class BulkUpdateUserQuestAttemptView(APIView):
+    def patch(self, request, *args, **kwargs):
+        serializer = UserQuestAttemptSerializer(data=request.data, many=True)
+        if serializer.is_valid():
+            ids = [item.get('id') for item in request.data if 'id' in item]
+            instances = UserQuestAttempt.objects.filter(id__in=ids)
+
+            # Add logging to debug
+            print(f"UserQuestAttempt Instances found: {[instance.id for instance in instances]}")
+
+            if len(instances) != len(ids):
+                return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            serializer.update(instances, serializer.validated_data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UserQuestQuestionAttemptListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -396,8 +449,7 @@ class BulkUpdateUserQuestQuestionAttemptView(APIView):
             instances = UserQuestQuestionAttempt.objects.filter(id__in=ids)
 
             # Add logging to debug
-            print(f"IDs to be updated: {ids}")
-            print(f"Instances found: {[instance.id for instance in instances]}")
+            print(f" UserQuestQuestionAttempt Instances found: {[instance.id for instance in instances]}")
 
             if len(instances) != len(ids):
                 return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -430,19 +482,6 @@ class AttemptAnswerRecordManageView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AttemptAnswerRecordSerializer
 
 
-class UserCourseCompletionListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserCourseCompletion.objects.all().order_by('-id')
-    serializer_class = UserCourseCompletionSerializer
-
-
-class UserCourseCompletionManageView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserCourseCompletion.objects.all().order_by('-id')
-    serializer_class = UserCourseCompletionSerializer
-
 
 class BadgeListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -456,3 +495,49 @@ class BadgeManageView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Badge.objects.all().order_by('-id')
     serializer_class = BadgeSerializer
+
+
+class UserQuestBadgeListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserQuestBadge.objects.all().order_by('-id')
+    serializer_class = UserQuestBadgeSerializer
+
+
+class UserQuestBadgeManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserQuestBadge.objects.all().order_by('-id')
+    serializer_class = UserQuestBadgeSerializer
+
+
+class UserQuestBadgeByUserView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserQuestBadgeSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return UserQuestBadge.objects.filter(quest_attempted__user=user_id).order_by('-id')
+
+
+class UserCourseBadgeListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourseBadge.objects.all().order_by('-id')
+    serializer_class = UserCourseBadgeSerializer
+
+
+class UserCourseBadgeManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourseBadge.objects.all().order_by('-id')
+    serializer_class = UserCourseBadgeSerializer
+
+
+class UserCourseBadgeByUserView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserCourseBadgeSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return UserCourseBadge.objects.filter(course_completed__user=user_id).order_by('-id')

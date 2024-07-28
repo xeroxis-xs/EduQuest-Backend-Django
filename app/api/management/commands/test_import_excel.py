@@ -17,9 +17,9 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.read_excel_sheets()
         self.get_questions()
-        # self.get_users()
+        self.get_users()
         # self.get_user_quest_attempts()
-        self.get_user_question_attempts("C210101@e.ntu.edu.sg")
+        self.get_user_question_attempts("testuser@e.ntu.edu.sg")
 
     def read_excel_sheets(self):
         excel_file = 'app/api/management/commands/JBRYGU_Introduction_to_Database_-_Quiz_1-results.xlsx'
@@ -58,15 +58,14 @@ class Command(BaseCommand):
         # print(f"Question list: {self.question_list}")
 
     def get_users(self):
-        user = dict()
         i = 0
         while not pd.isnull(self.main_results_sheet.iloc[i, 0]):
+            user = dict()
             user['email'] = self.main_results_sheet.iloc[i, 4]
             user['username'] = self.main_results_sheet.iloc[i, 1]
-            print(f"Email: {user['email']}")
-            print(f"Username: {user['username']}")
             self.user_list.append(user)
             i += 1
+        return self.user_list
 
     def get_user_quest_attempts(self):
         user_quest_attempt = dict()
@@ -88,6 +87,7 @@ class Command(BaseCommand):
             # If the email matches
             if self.main_results_sheet.iloc[i, 4].upper() == email.upper():
                 # Iterate through each question
+                print(f"Email: {self.main_results_sheet.iloc[i, 4]}")
 
                 for j in range(5, len(self.main_results_sheet.columns)-1):
                     user_question_attempt = dict()

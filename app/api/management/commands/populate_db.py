@@ -3,8 +3,23 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from faker import Faker
-from ...models import EduquestUser, Image, AcademicYear, Term, Course, Quest, Question, Answer, UserQuestAttempt, \
-    UserQuestQuestionAttempt, AttemptAnswerRecord, UserCourseCompletion, Badge
+from ...models import (
+    EduquestUser,
+    Image,
+    AcademicYear,
+    Term,
+    Course,
+    UserCourse,
+    Quest,
+    Question,
+    Answer,
+    UserQuestAttempt,
+    UserQuestQuestionAttempt,
+    AttemptAnswerRecord,
+    Badge,
+    UserQuestBadge,
+    UserCourseBadge
+)
 
 User = get_user_model()
 fake = Faker()
@@ -17,15 +32,17 @@ class Command(BaseCommand):
         self.clear_db()
         self.create_users()
         self.create_images()
+        self.create_badges()
         self.create_academic_years_terms_courses_quests_questions()
         self.create_attempts()
-        self.create_badges()
+
 
     def clear_db(self):
         eduquestUsers = EduquestUser.objects.filter(id__gt=2)
         eduquestUsers.delete()
         Image.objects.all().delete()
         AcademicYear.objects.all().delete()
+        Badge.objects.all().delete()
         print("Cleared all tables")
 
     def create_users(self):
@@ -43,12 +60,55 @@ class Command(BaseCommand):
     def create_images(self):
         image_names = ["Cloud Computing", "Data Science", "Machine Learning and AI",
                        "Computer Architecture", "Cyber Security", "Data Structure and Algorithm",
-                       "Database", "Multiple Choice", "Wooclap", "Kahoot"]
+                       "Database", "Multiple Choice", "Wooclap", "Kahoot", "First Attempt Badge", "Completionist Badge",
+                       "Expert Badge", "Speedster Badge", "Perfectionist Badge"]
         image_filenames = ["cloud_computing.svg", "data_science.svg", "machine_learning_and_ai.svg",
                            "computer_architecture.svg", "cyber_security.svg", "data_structure_and_algorithm.svg",
-                           "database.svg", "multiple_choice.svg", "wooclap.svg", "kahoot.svg"]
+                           "database.svg", "multiple_choice.svg", "wooclap.svg", "kahoot.svg", "first_attempt_badge.svg",
+                           "completionist_badge.svg", "expert_badge.svg", "speedster_badge.svg", "perfectionist_badge.svg"]
         for i in range(len(image_names)):
             Image.objects.create(name=image_names[i], filename=image_filenames[i])
+
+    def create_badges(self):
+        badge_name_description_type = [
+            {
+                "name": "First Attempt",
+                "description": "Awarded upon completing any quest for the first time.",
+                "type": "Quest",
+                "image": "first_attempt_badge.svg"
+            },
+            {
+                "name": "Completionist",
+                "description": "Awarded upon completing all quests within a course.",
+                "type": "Course",
+                "image": "completionist_badge.svg"
+            },
+            {
+                "name": "Expert",
+                "description": "Awarded for achieving the highest score on a quest.",
+                "type": "Quest",
+                "image": "expert_badge.svg"
+            },
+            {
+                "name": "Speedster",
+                "description": "Awarded for achieving the highest score on a quest and shortest overall time.",
+                "type": "Quest",
+                "image": "speedster_badge.svg"
+            },
+            {
+                "name": "Perfectionist",
+                "description": "Awarded for achieving a perfect score on a quiz.",
+                "type": "Quest",
+                "image": "perfectionist_badge.svg"
+            }
+        ]
+        for badge in badge_name_description_type:
+            Badge.objects.create(
+                name=badge["name"],
+                description=badge["description"],
+                type=badge["type"],
+                image=Image.objects.get(filename=badge["image"])
+            )
 
     def create_academic_years_terms_courses_quests_questions(self):
         for year in range(2023, 2025):
@@ -73,32 +133,32 @@ class Command(BaseCommand):
                         image=Image.objects.get(name=course_name)
                     )
                     # Enroll users in the course
-                    all_users = list(EduquestUser.objects.all())
-                    num_users_to_enroll = random.randint(1, len(all_users))  # Decide how many users to enroll
-                    users_to_enroll = random.sample(all_users, num_users_to_enroll)
-                    for user in users_to_enroll:
-                        course.enrolled_users.add(user)
+                    for user in User.objects.filter(id__gt=1):
+                        if random.choice([True, False]):
+                            UserCourse.objects.create(
+                                user=user,
+                                course=course,
+                                enrolled_on=timezone.make_aware(fake.date_time_this_month())
+                            )
                     # Continue with quest and question creation
-                    for quest_num in range(0, random.randint(1, 5)):
+                    for quest_num in range(0, random.randint(1, 3)):
                         quest = Quest.objects.create(
                             from_course=course,
                             name=f"Quest {quest_num}",
                             description=fake.text(),
                             type="Multiple Choice",
                             status="Active",
-                            max_attempts=random.randint(1, 3),
+                            max_attempts=random.randint(1, 4),
                             organiser=User.objects.get(id=1),
                             image=Image.objects.get(name="Multiple Choice")
                         )
-                        number = 1
-                        for question_num in range(1, random.randint(1, 6)):
+                        for question_num in range(1, random.randint(2, 5)):
                             question = Question.objects.create(
                                 from_quest=quest,
                                 text=fake.sentence(),
-                                number=number,
+                                number=question_num,
                                 max_score=random.randint(1, 5)
                             )
-                            number += 1
                             for _ in range(4):
                                 Answer.objects.create(
                                     question=question,
@@ -108,62 +168,35 @@ class Command(BaseCommand):
             print(f"Created academic year: {academic_year.start_year}-{academic_year.end_year}")
 
     def create_attempts(self):
+        # Iterate through all users except the superuser
         for user in User.objects.filter(id__gt=1):
-            for course in Course.objects.all():
-                if user in course.enrolled_users.all():
-                    for quest in Quest.objects.filter(from_course=course):
-                        # Check if an attempt for this quest by this user already exists
-                        attempt_exists = UserQuestAttempt.objects.filter(user=user, quest=quest).exists()
-                        if not attempt_exists and random.choice([True, False]):
-                            # Create a new attempt for a quest
-                            first_attempted_on = timezone.make_aware(fake.date_time_this_month())
-                            last_attempted_on = first_attempted_on + timezone.timedelta(days=random.randint(1, 7))
-                            user_quest_attempt = UserQuestAttempt.objects.create(
-                                user=user,
-                                quest=quest,
-                                first_attempted_on=first_attempted_on,
-                                last_attempted_on=last_attempted_on,
+            # Iterate through all courses the user is enrolled in
+            for user_course in UserCourse.objects.filter(user=user):
+                # Iterate through all quests in the course enrolled in
+                for quest in Quest.objects.filter(from_course=user_course.course):
+                    # Randomly create some attempts for a quest
+                    for i in range(random.randint(1, 3)):
+                        user_quest_attempt = UserQuestAttempt.objects.create(
+                            user=user,
+                            quest=quest,
+                            first_attempted_on=timezone.make_aware(fake.date_time_this_month()),
+                            last_attempted_on=timezone.make_aware(fake.date_time_this_month() + timezone.timedelta(days=random.randint(1, 7))),
+                            all_questions_submitted=False
+                        )
+                        # For each user quest attempt, randomly attempt some questions
+                        for question in Question.objects.filter(from_quest=user_quest_attempt.quest):
+                            user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
+                                user_quest_attempt=user_quest_attempt,
+                                question=question,
                                 submitted=False,
-                                time_taken=(last_attempted_on - first_attempted_on).total_seconds()*1000
+                                score_achieved=0
                             )
-                            # For each question in the quest, create a question attempt
-                            for question in quest.questions.all():
-                                user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
-                                    user_quest_attempt=user_quest_attempt,
-                                    question=question,
-                                    submitted=False,
-                                    score_achieved=0
+                            for answer in question.answers.all():
+                                # Create answer record for every answer
+                                AttemptAnswerRecord.objects.create(
+                                    user_quest_question_attempt=user_quest_question_attempt,
+                                    answer=answer,
+                                    is_selected=random.choice([True, False])
                                 )
-                                for answer in question.answers.all():
-                                    # Create answer record for every answer
-                                    AttemptAnswerRecord.objects.create(
-                                        user_quest_question_attempt=user_quest_question_attempt,
-                                        answer=answer,
-                                        is_selected=random.choice([True, False])
-                                    )
-                            print(f"Created attempt for user: {user.username}, quest: {quest.name}")
+                        print(f"Created attempt for user: {user.username}, course: {user_course.course} - quest: {quest.name}")
 
-    def create_badges(self):
-        badge_types = [
-            ('First Attempt', 'Awarded upon completing any quest for the first time.'),
-            ('Completionist', 'Awarded upon completing all quests within a course.'),
-            ('Expert', 'Awarded for achieving the highest score on a Quest.'),
-            ('Speedster', 'Awarded for achieving the highest score on a Quest AND shortest overall time.'),
-            ('Perfectionist', 'Awarded for achieving a perfect score on a quiz.'),
-        ]
-        for badge_type in badge_types:
-            for user in User.objects.filter(id__gt=1):
-                if random.choice([True, False]):
-                    course = random.choice(Course.objects.all())
-                    quest = random.choice(Quest.objects.all())
-                    badge = Badge.objects.create(
-                        name=badge_type[0],
-                        description=badge_type[1],
-                        type="Quest" if badge_type[0] in ["First Attempt", "Expert", "Speedster",
-                                                          "Perfectionist"] else "Course",
-                        course=course if badge_type[0] == "Completionist" else None,
-                        quest=quest if badge_type[0] in ["First Attempt", "Expert", "Speedster",
-                                                         "Perfectionist"] else None,
-                    )
-                    badge.earned_by.add(user)
-                    print(f"Created badge: {badge.name} for user: {user.username}")
