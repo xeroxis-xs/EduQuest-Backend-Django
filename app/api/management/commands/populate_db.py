@@ -1,4 +1,6 @@
 import random
+import pytz
+import datetime
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -20,6 +22,7 @@ from ...models import (
     UserQuestBadge,
     UserCourseBadge
 )
+from .template import *
 
 User = get_user_model()
 fake = Faker()
@@ -46,7 +49,7 @@ class Command(BaseCommand):
         print("Cleared all tables")
 
     def create_users(self):
-        for _ in range(4):
+        for _ in range(6):
             user = EduquestUser.objects.create(
                 username=f"#{fake.name().upper()}#",
                 email=f"{fake.user_name().upper()}@e.ntu.edu.sg",
@@ -58,79 +61,47 @@ class Command(BaseCommand):
             print(f"Created user: {user.username}")
 
     def create_images(self):
-        image_names = ["Cloud Computing", "Data Science", "Machine Learning and AI",
-                       "Computer Architecture", "Cyber Security", "Data Structure and Algorithm",
-                       "Database", "Multiple Choice", "Wooclap", "Kahoot", "First Attempt Badge", "Completionist Badge",
-                       "Expert Badge", "Speedster Badge", "Perfectionist Badge"]
-        image_filenames = ["cloud_computing.svg", "data_science.svg", "machine_learning_and_ai.svg",
-                           "computer_architecture.svg", "cyber_security.svg", "data_structure_and_algorithm.svg",
-                           "database.svg", "multiple_choice.svg", "wooclap.svg", "kahoot.svg", "first_attempt_badge.svg",
-                           "completionist_badge.svg", "expert_badge.svg", "speedster_badge.svg", "perfectionist_badge.svg"]
-        for i in range(len(image_names)):
-            Image.objects.create(name=image_names[i], filename=image_filenames[i])
+        for image_item in image_list:
+            Image.objects.create(
+                name=image_item["name"],
+                filename=image_item["filename"]
+            )
+            print(f"Created image: {image_item['name']}")
 
     def create_badges(self):
-        badge_name_description_type = [
-            {
-                "name": "First Attempt",
-                "description": "Awarded upon completing any quest for the first time.",
-                "type": "Quest",
-                "image": "first_attempt_badge.svg"
-            },
-            {
-                "name": "Completionist",
-                "description": "Awarded upon completing all quests within a course.",
-                "type": "Course",
-                "image": "completionist_badge.svg"
-            },
-            {
-                "name": "Expert",
-                "description": "Awarded for achieving the highest score on a quest.",
-                "type": "Quest",
-                "image": "expert_badge.svg"
-            },
-            {
-                "name": "Speedster",
-                "description": "Awarded for achieving the highest score on a quest and shortest overall time.",
-                "type": "Quest",
-                "image": "speedster_badge.svg"
-            },
-            {
-                "name": "Perfectionist",
-                "description": "Awarded for achieving a perfect score on a quiz.",
-                "type": "Quest",
-                "image": "perfectionist_badge.svg"
-            }
-        ]
-        for badge in badge_name_description_type:
+        for badge in badge_list:
             Badge.objects.create(
                 name=badge["name"],
                 description=badge["description"],
                 type=badge["type"],
+                condition=badge["condition"],
                 image=Image.objects.get(filename=badge["image"])
             )
 
     def create_academic_years_terms_courses_quests_questions(self):
-        for year in range(2023, 2025):
-            academic_year = AcademicYear.objects.create(start_year=year, end_year=year + 1)
-            for term_name in ["Semester 1", "Semester 2", "Special Term 1", "Special Term 2"]:
-                start_date = timezone.make_aware(fake.date_time_this_decade())
+        for year in year_list:
+            academic_year = AcademicYear.objects.create(
+                start_year=year["start_year"],
+                end_year=year["end_year"]
+            )
+
+            for term_item in term_list:
                 term = Term.objects.create(
                     academic_year=academic_year,
-                    name=term_name,
-                    start_date=start_date,
-                    end_date=start_date + timezone.timedelta(days=90)
+                    name=term_item["name"],
+                    start_date=term_item["start_date"],
+                    end_date=term_item["end_date"]
                 )
-                for course_name in ["Cloud Computing", "Data Science", "Machine Learning and AI",
-                                    "Computer Architecture", "Cyber Security", "Data Structure and Algorithm",
-                                    "Database"]:
+
+                for course_item in course_list:
                     course = Course.objects.create(
                         term=term,
-                        name=f"{course_name}",
-                        code=f"CS{random.randint(1000, 1006)}",
-                        description=fake.text(max_nb_chars=150),
+                        name=f"{course_item['name']}",
+                        code=course_item["code"],
+                        type="Eduquest",
+                        description=course_item["description"],
                         status="Active",
-                        image=Image.objects.get(name=course_name)
+                        image=Image.objects.get(name=course_item["name"])
                     )
                     # Enroll users in the course
                     for user in User.objects.filter(id__gt=1):
@@ -141,18 +112,27 @@ class Command(BaseCommand):
                                 enrolled_on=timezone.make_aware(fake.date_time_this_month())
                             )
                     # Continue with quest and question creation
-                    for quest_num in range(0, random.randint(1, 3)):
+                    for quest_num in range(1, random.randint(2, 4)):
+                        expired_date = random.choice([None, timezone.make_aware(
+                            fake.date_time_between_dates(term_item["start_date"], term_item["end_date"]).replace(hour=23, minute=59, second=59, microsecond=999999)
+                            + timezone.timedelta(days=random.randint(1, 7))
+                        )])
+                        status = "Active"
+                        if expired_date:
+                            if expired_date < timezone.now():
+                                status = "Expired"
                         quest = Quest.objects.create(
                             from_course=course,
                             name=f"Quest {quest_num}",
                             description=fake.text(),
-                            type="Multiple Choice",
-                            status="Active",
-                            max_attempts=random.randint(1, 4),
+                            type="Eduquest MCQ",
+                            expiration_date=expired_date,
+                            status=status,
+                            max_attempts=random.randint(1, 5),
                             organiser=User.objects.get(id=1),
                             image=Image.objects.get(name="Multiple Choice")
                         )
-                        for question_num in range(1, random.randint(2, 5)):
+                        for question_num in range(1, random.randint(3, 5)):
                             question = Question.objects.create(
                                 from_quest=quest,
                                 text=fake.sentence(),
@@ -175,12 +155,14 @@ class Command(BaseCommand):
                 # Iterate through all quests in the course enrolled in
                 for quest in Quest.objects.filter(from_course=user_course.course):
                     # Randomly create some attempts for a quest
-                    for i in range(random.randint(1, 3)):
+                    for i in range(random.randint(1, quest.max_attempts)):
+                        first_attempted_on = timezone.make_aware(fake.date_time_this_month())
+                        last_attempted_on = first_attempted_on + timezone.timedelta(days=random.randint(1, 7))
                         user_quest_attempt = UserQuestAttempt.objects.create(
                             user=user,
                             quest=quest,
-                            first_attempted_on=timezone.make_aware(fake.date_time_this_month()),
-                            last_attempted_on=timezone.make_aware(fake.date_time_this_month() + timezone.timedelta(days=random.randint(1, 7))),
+                            first_attempted_on=first_attempted_on,
+                            last_attempted_on=last_attempted_on,
                             all_questions_submitted=False
                         )
                         # For each user quest attempt, randomly attempt some questions

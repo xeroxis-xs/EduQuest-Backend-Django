@@ -4,11 +4,12 @@ services:
   app:
     build:
       context: .
+      dockerfile: Dockerfile.dev
     ports:
       - "8000:8000"
     volumes:
       - ./app:/app
-    command: sh -c "python manage.py runserver 127.0.0.1:8000"
+    command: sh -c "python manage.py runserver 0.0.0.0:8000"
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=127.0.0.1,localhost
@@ -20,3 +21,48 @@ services:
       - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - DEBUG=1
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app
+    command: sh -c "celery -A core worker --loglevel=info"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=127.0.0.1,localhost
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
+      - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
+      - DEBUG=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app
+    command: sh -c "celery -A core beat --loglevel=info"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=127.0.0.1,localhost
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
+      - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
+      - DEBUG=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"

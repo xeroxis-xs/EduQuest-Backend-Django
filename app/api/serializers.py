@@ -111,6 +111,7 @@ class UserCourseSerializer(serializers.ModelSerializer):
 
 
 class CourseSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
     term = TermSerializer()
     image = ImageSerializer()
     enrolled_users = UserCourseSerializer(many=True, read_only=True, required=False)
@@ -181,8 +182,7 @@ class QuestSerializer(serializers.ModelSerializer):
         return obj.total_questions()
 
     def create(self, validated_data):
-        from_course_data = validated_data.pop('from_course')
-        print("from_course_data:", from_course_data)  # Debugging
+        from_course_data = validated_data.pop('from_course', None)
         enrolled_users_data = from_course_data.pop('enrolled_users', [])
         term_data = from_course_data.pop('term')
         academic_year_data = term_data.pop('academic_year')
@@ -210,17 +210,24 @@ class QuestSerializer(serializers.ModelSerializer):
         return quest
 
     def update(self, instance, validated_data):
-        from_course_data = validated_data.pop('from_course')
-        enrolled_users_data = from_course_data.pop('enrolled_users', [])
-        course_image_data = from_course_data.pop('image')
-        image_data = validated_data.pop('image')
-        # Remove term from from_course_data
-        term_data = from_course_data.pop('term')
+        from_course_data = validated_data.pop('from_course', None)
+        if from_course_data:
+            enrolled_users_data = from_course_data.pop('enrolled_users', [])
+            course_image_data = from_course_data.pop('image')
+            term_data = from_course_data.pop('term')
+            from_course = Course.objects.get(**from_course_data)
+            instance.from_course = from_course
 
-        from_course = Course.objects.get(**from_course_data)
-        image = Image.objects.get(**image_data)
-        instance.from_course = from_course
-        instance.image = image
+        image_data = validated_data.pop('image', None)
+        if image_data:
+            image = Image.objects.get(**image_data)
+            instance.image = image
+
+        # If the status is changed from Active to Expired,
+        # update the expiration_date to the current time
+        status = validated_data.get('status', None)
+        if instance.status == 'Active' and status == 'Expired':
+            instance.expiration_date = timezone.now()
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -302,7 +309,6 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
         if isinstance(obj, OrderedDict):
             return None
         return obj.time_taken()
-
 
     def create(self, validated_data):
         user_quest_attempt = UserQuestAttempt.objects.create(**validated_data)

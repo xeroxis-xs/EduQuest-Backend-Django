@@ -63,9 +63,10 @@ class Term(models.Model):
 class Course(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='courses')
     name = models.CharField(max_length=255)
-    code = models.CharField(max_length=100)
+    code = models.CharField(max_length=100, null=True, blank=True)
+    type = models.CharField(max_length=100)  # Eduquest, Private
     description = models.TextField()
-    status = models.CharField(max_length=100)
+    status = models.CharField(max_length=100) # Active, Inactive
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
@@ -86,8 +87,9 @@ class Quest(models.Model):
     from_course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quests')
     name = models.CharField(max_length=100)
     description = models.TextField()
-    type = models.CharField(max_length=50)  # EduQuest, Kahoot!, WooClap
-    status = models.CharField(max_length=50)  # Ongoing, Upcoming, Completed
+    type = models.CharField(max_length=50)  # EduQuest MCQ, Kahoot!, WooClap, Private
+    status = models.CharField(max_length=50)  # Active, Expired
+    expiration_date = models.DateTimeField(null=True, blank=True)
     max_attempts = models.PositiveIntegerField(default=1)
     organiser = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='quests_organised')
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
@@ -185,6 +187,7 @@ class Badge(models.Model):
     name = models.CharField(max_length=50)
     description = models.TextField()
     type = models.CharField(max_length=50)  # Course Type or Quest Type
+    condition = models.CharField(max_length=250)  # Condition to be met to earn the badge
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
