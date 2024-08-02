@@ -21,6 +21,7 @@ from .models import (
     Badge,
     UserQuestBadge,
     UserCourseBadge,
+    Document,
 )
 
 
@@ -448,4 +449,10 @@ class UserCourseBadgeSerializer(serializers.ModelSerializer):
     course_completed = UserCourseSerializer()
     class Meta:
         model = UserCourseBadge
+        fields = '__all__'
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
         fields = '__all__'

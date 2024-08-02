@@ -25,7 +25,8 @@ from .models import (
     AttemptAnswerRecord,
     Badge,
     UserQuestBadge,
-    UserCourseBadge
+    UserCourseBadge,
+    Document
 )
 from .serializers import (
     EduquestUserSerializer,
@@ -42,7 +43,8 @@ from .serializers import (
     AttemptAnswerRecordSerializer,
     BadgeSerializer,
     UserQuestBadgeSerializer,
-    UserCourseBadgeSerializer
+    UserCourseBadgeSerializer,
+    DocumentSerializer
 )
 # from django.http import HttpResponse
 
@@ -541,3 +543,12 @@ class UserCourseBadgeByUserView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs['user_id']
         return UserCourseBadge.objects.filter(course_completed__user=user_id).order_by('-id')
+
+
+class DocumentUploadView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    parser_classes = (MultiPartParser, FormParser)
+

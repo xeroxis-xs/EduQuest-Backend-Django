@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'api',
-    'rest_framework_simplejwt'
+    'rest_framework_simplejwt',
+    'storages',
 ]
 
 REST_FRAMEWORK = {
@@ -178,6 +179,13 @@ USE_I18N = True
 USE_TZ = True
 
 
+# Azure Storage settings
+AZURE_ACCOUNT_NAME = os.environ.get('AZURE_ACCOUNT_NAME')
+AZURE_ACCOUNT_KEY = os.environ.get('AZURE_ACCOUNT_KEY')
+AZURE_CONTAINER = os.environ.get('AZURE_CONTAINER')
+AZURE_CUSTOM_DOMAIN = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
+AZURE_SECURE_URLS = True
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
@@ -185,9 +193,12 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STORAGES = {
+    "default": {
+        "BACKEND": "api.storage_backends.AzureMediaStorage"
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
+    }
 }
 
 CSRF_TRUSTED_ORIGINS = ['https://eduquest-backend.azurewebsites.net']
@@ -210,4 +221,6 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Singapore'
+
+
 

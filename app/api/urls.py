@@ -44,6 +44,7 @@ from .views import (
     UserCourseBadgeListCreateView,
     UserCourseBadgeManageView,
     UserCourseBadgeByUserView,
+    DocumentUploadView
 )
 
 urlpatterns = [
@@ -104,4 +105,6 @@ urlpatterns = [
     path("UserCourseBadge/", UserCourseBadgeListCreateView.as_view(), name='UserCourseBadge-list-create'),
     path("UserCourseBadge/<int:pk>/", UserCourseBadgeManageView.as_view(), name='UserCourseBadge-retrieve-update-destroy'),
     path("UserCourseBadge/by-user/<int:user_id>/", UserCourseBadgeByUserView.as_view(), name='UserCourseBadge-by-user'),
+
+    path("DocumentUpload/", DocumentUploadView.as_view(), name='Document-upload'),
 ]
