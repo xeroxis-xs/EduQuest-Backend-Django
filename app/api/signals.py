@@ -8,16 +8,14 @@ from .models import (
     Term,
     Course,
     Quest,
-    Question,
-    Answer,
     UserQuestAttempt,
     UserQuestQuestionAttempt,
-    AttemptAnswerRecord,
     UserCourse,
     Badge,
     UserQuestBadge,
     UserCourseBadge,
 )
+from django.utils import timezone
 
 
 @receiver(post_save, sender=UserQuestAttempt)
@@ -212,3 +210,32 @@ def calculate_score_for_a_question(sender, instance, created, **kwargs):
             instance.save(update_fields=['score_achieved'])
             # Reconnect the signal
             signals.post_save.connect(receiver=calculate_score_for_a_question, sender=UserQuestQuestionAttempt)
+
+
+@receiver(post_save, sender=EduquestUser)
+def create_private_course(sender, instance, created, **kwargs):
+    if created:
+        private_year, _ = AcademicYear.objects.get_or_create(
+            start_year=0,
+            end_year=0
+        )
+        private_term, _ = Term.objects.get_or_create(
+            academic_year=private_year,
+            name="Private Term",
+            start_date=None,
+            end_date=None
+        )
+        private_course = Course.objects.create(
+            term=private_term,
+            name="Private Course",
+            code=f"PRIVATE {instance.id}",
+            type="Private",
+            description="This is a private Course created for you to generate Quests for your own use.",
+            status="Active",
+            image=Image.objects.get(name="Private Course")
+        )
+        UserCourse.objects.create(
+            user=instance,
+            course=private_course,
+            enrolled_on=timezone.now()
+        )

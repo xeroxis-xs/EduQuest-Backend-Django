@@ -17,9 +17,11 @@ from .views import (
     QuestListCreateView,
     QuestManageView,
     QuestByCourseView,
+    PrivateQuestByUserView,
     QuestionListCreateView,
     QuestionManageView,
     QuestionByQuestView,
+    BulkCreateQuestionView,
     BulkUpdateQuestionView,
     AnswerListCreateView,
     AnswerManageView,
@@ -44,7 +46,9 @@ from .views import (
     UserCourseBadgeListCreateView,
     UserCourseBadgeManageView,
     UserCourseBadgeByUserView,
-    DocumentUploadView
+    DocumentUploadView,
+    DocumentManageView,
+    DocumentByUserView,
 )
 
 urlpatterns = [
@@ -70,10 +74,12 @@ urlpatterns = [
     path("Quest/import/", QuestImportView.as_view(), name='Quest-import'),
     path("Quest/<int:pk>/", QuestManageView.as_view(), name='Quest-retrieve-update-destroy'),
     path("Quest/by-course/<int:course_id>/", QuestByCourseView.as_view(), name='Quest-by-course'),
+    path("Quest/private/by-user/<int:user_id>/", PrivateQuestByUserView.as_view(), name='Private-Quest-by-user'),
 
     path("Question/", QuestionListCreateView.as_view(), name='Question-list-create'),
     path("Question/<int:pk>/", QuestionManageView.as_view(), name='Question-retrieve-update-destroy'),
     path("Question/by-quest/<int:quest_id>/", QuestionByQuestView.as_view(), name='Question-by-quest'),
+    path('Question/bulk-create/', BulkCreateQuestionView.as_view(), name='bulk_create_questions'),
     path("Question/bulk-update/", BulkUpdateQuestionView.as_view(), name='bulk-update-question'),
 
     path("Answer/", AnswerListCreateView.as_view(), name='Answer-list-create'),
@@ -107,4 +113,6 @@ urlpatterns = [
     path("UserCourseBadge/by-user/<int:user_id>/", UserCourseBadgeByUserView.as_view(), name='UserCourseBadge-by-user'),
 
     path("DocumentUpload/", DocumentUploadView.as_view(), name='Document-upload'),
+    path("Document/<int:pk>/", DocumentManageView.as_view(), name='Document-retrieve-update-destroy'),
+    path("Document/by-user/<int:user_id>/", DocumentByUserView.as_view(), name='Document-by-user'),
 ]

@@ -33,8 +33,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         self.clear_db()
-        self.create_users()
         self.create_images()
+        self.create_users()
         self.create_badges()
         self.create_academic_years_terms_courses_quests_questions()
         self.create_attempts()
@@ -48,6 +48,14 @@ class Command(BaseCommand):
         Badge.objects.all().delete()
         print("Cleared all tables")
 
+    def create_images(self):
+        for image_item in image_list:
+            Image.objects.create(
+                name=image_item["name"],
+                filename=image_item["filename"]
+            )
+            print(f"Created image: {image_item['name']}")
+
     def create_users(self):
         for _ in range(6):
             user = EduquestUser.objects.create(
@@ -59,14 +67,6 @@ class Command(BaseCommand):
                 is_staff=False
             )
             print(f"Created user: {user.username}")
-
-    def create_images(self):
-        for image_item in image_list:
-            Image.objects.create(
-                name=image_item["name"],
-                filename=image_item["filename"]
-            )
-            print(f"Created image: {image_item['name']}")
 
     def create_badges(self):
         for badge in badge_list:
@@ -98,7 +98,7 @@ class Command(BaseCommand):
                         term=term,
                         name=f"{course_item['name']}",
                         code=course_item["code"],
-                        type="Eduquest",
+                        type="Public",
                         description=course_item["description"],
                         status="Active",
                         image=Image.objects.get(name=course_item["name"])

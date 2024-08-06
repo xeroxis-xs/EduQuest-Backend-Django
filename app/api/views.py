@@ -302,6 +302,15 @@ class QuestByCourseView(generics.ListAPIView):
         return Quest.objects.filter(from_course=course_id).order_by('-id')
 
 
+class PrivateQuestByUserView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = QuestSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return Quest.objects.filter(organiser=user, type='Private').order_by('-id')
+
+
 class QuestionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -323,6 +332,15 @@ class QuestionByQuestView(generics.ListAPIView):
     def get_queryset(self):
         quest_id = self.kwargs['quest_id']
         return Question.objects.filter(from_quest=quest_id).order_by('number')
+
+
+class BulkCreateQuestionView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = QuestionSerializer(data=request.data, many=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class BulkUpdateQuestionView(APIView):
@@ -551,4 +569,20 @@ class DocumentUploadView(generics.CreateAPIView):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     parser_classes = (MultiPartParser, FormParser)
+
+
+class DocumentManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+
+
+class DocumentByUserView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = DocumentSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Document.objects.filter(uploaded_by=user_id).order_by('-id')
 

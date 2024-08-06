@@ -1,8 +1,10 @@
+import os
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import RegexValidator
+from django.utils.text import slugify
 from .utils import split_full_name
 from django.db.models import Sum
+from storages.backends.azure_storage import AzureStorage
 
 
 class EduquestUser(AbstractUser):
@@ -10,19 +12,6 @@ class EduquestUser(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    # Custom validator example: Allow letters, numbers, and selected special characters
-    # username_validator = RegexValidator(
-    #     regex=r'^[\w.@+#\s-]+$',
-    #     message="Enter a valid username. This value may contain only letters, numbers, spaces, and @/./+/-/_/# characters."
-    # )
-    # username = models.CharField(
-    #     max_length=150,
-    #     unique=True,
-    #     validators=[username_validator],  # Apply the custom validator
-    #     error_messages={
-    #         'unique': "A user with that username already exists.",
-    #     },
-    # )
 
     def __str__(self):
         return f"{self.id}"
@@ -53,8 +42,8 @@ class AcademicYear(models.Model):
 class Term(models.Model):
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='terms')
     name = models.CharField(max_length=50)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.academic_year} - {self.name} ({self.start_date} to {self.end_date})"
@@ -88,7 +77,7 @@ class Quest(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     type = models.CharField(max_length=50)  # EduQuest MCQ, Kahoot!, WooClap, Private
-    status = models.CharField(max_length=50)  # Active, Expired
+    status = models.CharField(max_length=50, default="Active")  # Active, Expired
     expiration_date = models.DateTimeField(null=True, blank=True)
     max_attempts = models.PositiveIntegerField(default=1)
     organiser = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='quests_organised')
@@ -120,6 +109,7 @@ class Answer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
     text = models.TextField()
     is_correct = models.BooleanField(default=False)
+    reason = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.text} for Question ID {self.question.id}"
@@ -217,7 +207,29 @@ class UserQuestBadge(models.Model):
 class Document(models.Model):
     name = models.CharField(max_length=255)
     file = models.FileField(upload_to='documents/')
+    size = models.FloatField()
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='uploaded_documents')
+
+    def save(self, *args, **kwargs):
+        if self.file:
+            storage = AzureStorage()
+            file_name, file_extension = os.path.splitext(self.file.name)
+            unique_file_name = self.file.name
+
+            # Check if file with the same name exists
+            while storage.exists(unique_file_name):
+                unique_file_name = f"{file_name}_{slugify(self.uploaded_by.username)}_{self.pk or ''}{file_extension}"
+
+            self.file.name = unique_file_name
+
+        super(Document, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        storage = AzureStorage()
+        if storage.exists(self.file.name):
+            storage.delete(self.file.name)
+        super(Document, self).delete(*args, **kwargs)
 
     def __str__(self):
         return self.name

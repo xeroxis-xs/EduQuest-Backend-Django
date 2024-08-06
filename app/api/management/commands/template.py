@@ -19,7 +19,9 @@ image_list = [
     {"name": "Completionist Badge", "filename": "completionist_badge.svg"},
     {"name": "Expert Badge", "filename": "expert_badge.svg"},
     {"name": "Speedster Badge", "filename": "speedster_badge.svg"},
-    {"name": "Perfectionist Badge", "filename": "perfectionist_badge.svg"}
+    {"name": "Perfectionist Badge", "filename": "perfectionist_badge.svg"},
+    {"name": "Private Course", "filename": "private_course.svg"},
+    {"name": "Private Quest", "filename": "private_quest.svg"},
 ]
 
 badge_list = [
@@ -66,6 +68,10 @@ year_list = [
     {
         "start_year": 2024,
         "end_year": 2025
+    },
+    {
+        "start_year": 0,
+        "end_year": 0
     }
 ]
 
@@ -83,6 +89,11 @@ term_list = [
         "start_date": timezone.make_aware(datetime.datetime(2025, 1, 13, 0, 0, 0), sg_timezone),
         "end_date": timezone.make_aware(datetime.datetime(2025, 5, 9, 23, 59, 59), sg_timezone)
     },
+    {
+        "name": "Private Term",
+        "start_date": None,
+        "end_date": None
+    }
 ]
 
 course_list = [
