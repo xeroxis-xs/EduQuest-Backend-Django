@@ -29,17 +29,20 @@ class BulkSerializer(serializers.ListSerializer):
     def update(self, instances, validated_data):
         instance_mapping = {instance.id: instance for instance in instances}
         for item in validated_data:
-            print("item:", item)  # Debugging
+            print("Validated Item: ", item)  # Debugging
             instance_id = item.get('id', None)
             if instance_id is not None and instance_id in instance_mapping:
                 self.child.update(instance_mapping[instance_id], item)
             else:
+                print("No instance ID found")  # Debugging
                 pass
         # Optionally, handle deletions
         return instances
 
 
 class EduquestUserSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)  # Ensure id field is included
+
     class Meta:
         model = EduquestUser
         fields = ['id', 'first_name', 'last_name', 'username', 'email', 'nickname', 'last_login',
@@ -60,12 +63,12 @@ class EduquestUserSerializer(serializers.ModelSerializer):
         )
         return user
 
-    def update(self, instance, validated_data):
-        first_name, last_name = split_full_name(validated_data.pop('nickname'))
-        instance.first_name = first_name
-        instance.last_name = last_name
-        instance.save()
-        return instance
+    # def update(self, instance, validated_data):
+    #     first_name, last_name = split_full_name(validated_data.pop('nickname'))
+    #     instance.first_name = first_name
+    #     instance.last_name = last_name
+    #     instance.save()
+    #     return instance
 
 
 class ImageSerializer(serializers.ModelSerializer):
@@ -105,21 +108,22 @@ class TermSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserCourseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserCourse
-        fields = '__all__'
-
-
 class CourseSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
-    term = TermSerializer()
-    image = ImageSerializer()
-    enrolled_users = UserCourseSerializer(many=True, read_only=True, required=False)
+    term = TermSerializer(required=False)
+    image = ImageSerializer(required=False)
+    enrolled_users = serializers.StringRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Course
         fields = '__all__'
+        extra_kwargs = {
+            # Make the field optional during UserCourse create
+            'name': {'required': False},
+            'type': {'required': False},
+            'description': {'required': False},
+            'status': {'required': False},
+        }
 
     # Course is created with empty enrolled_users
     def create(self, validated_data):
@@ -165,16 +169,45 @@ class CourseSerializer(serializers.ModelSerializer):
         return instance
 
 
+class UserCourseSerializer(serializers.ModelSerializer):
+    course = CourseSerializer()
+    user = EduquestUserSerializer()
+
+    class Meta:
+        model = UserCourse
+        fields = '__all__'
+
+    def create(self, validated_data):
+        course_data = validated_data.pop('course')
+        user_data = validated_data.pop('user')
+        course = Course.objects.get(id=course_data['id'])
+        user = EduquestUser.objects.get(id=user_data['id'])
+        user_course = UserCourse.objects.create(course=course, user=user)
+        return user_course
+
+
 class QuestSerializer(serializers.ModelSerializer):
-    from_course = CourseSerializer()
-    organiser = EduquestUserSerializer()
-    image = ImageSerializer()
+    id = serializers.IntegerField(required=False)
+    from_course = CourseSerializer(required=False)
+    organiser = EduquestUserSerializer(required=False)
+    image = ImageSerializer(required=False)
     total_max_score = serializers.SerializerMethodField(read_only=True)
     total_questions = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Quest
         fields = '__all__'
+        extra_kwargs = {
+            # Make the field optional during UserQuestAttempt create
+            'name': {'required': False},
+            'description': {'required': False},
+            'type': {'required': False},
+            'status': {'required': False},
+            'expiration_date': {'required': False},
+            'max_attempts': {'required': False},
+            'total_max_score': {'required': False},
+            'total_questions': {'required': False},
+        }
 
     def get_total_max_score(self, obj):
         return obj.total_max_score()
@@ -293,6 +326,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class UserQuestAttemptSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
+    quest = QuestSerializer(required=False)
     total_score_achieved = serializers.SerializerMethodField(required=False, read_only=True)
     time_taken = serializers.SerializerMethodField(required=False, read_only=True)
 
@@ -312,7 +346,9 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
         return obj.time_taken()
 
     def create(self, validated_data):
-        user_quest_attempt = UserQuestAttempt.objects.create(**validated_data)
+        quest_data = validated_data.pop('quest')
+        quest = Quest.objects.get(id=quest_data['id'])
+        user_quest_attempt = UserQuestAttempt.objects.create(quest=quest, **validated_data)
 
         # Create a UserQuestQuestionAttempt instance with empty selected_answers for newly created UserQuestAttempt
         questions = Question.objects.filter(from_quest=user_quest_attempt.quest)

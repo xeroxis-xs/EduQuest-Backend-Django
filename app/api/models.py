@@ -69,7 +69,7 @@ class UserCourse(models.Model):
     completed_on = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.user.username} enrolled {self.course.name}"
+        return f"{self.user.id}"
 
 
 class Quest(models.Model):

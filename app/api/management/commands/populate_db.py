@@ -58,11 +58,12 @@ class Command(BaseCommand):
 
     def create_users(self):
         for _ in range(6):
+            name = fake.name().upper()
             user = EduquestUser.objects.create(
-                username=f"#{fake.name().upper()}#",
+                username=f"#{name}#",
                 email=f"{fake.user_name().upper()}@e.ntu.edu.sg",
                 password='password',
-                nickname=fake.first_name(),
+                nickname=name,
                 is_active=True,
                 is_staff=False
             )

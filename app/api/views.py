@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import JsonResponse
 from datetime import datetime
+from django.db.models import Count
 import json
 from .excel import Excel
 from rest_framework.response import Response
@@ -225,7 +226,9 @@ class QuestImportView(APIView):
                 # Create a UserQuestAttempt object for each User
                 user_quest_attempt_data = {
                     'user': user.id,
-                    'quest': new_quest_id,
+                    'quest': {
+                        'id': new_quest_id
+                    },
                     'last_attempted_on': last_attempted_on,
                 }
                 user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
@@ -442,6 +445,12 @@ class BulkUpdateUserQuestAttemptView(APIView):
             if len(instances) != len(ids):
                 return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
 
+
+            # Convert quest field to Quest instance
+            for item in serializer.validated_data:
+                quest_data = item.pop('quest')
+                item['quest'] = Quest.objects.get(id=quest_data['id'])
+
             serializer.update(instances, serializer.validated_data)
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -586,3 +595,67 @@ class DocumentByUserView(generics.ListAPIView):
         user_id = self.kwargs['user_id']
         return Document.objects.filter(uploaded_by=user_id).order_by('-id')
 
+
+class AnalyticsPartThreeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Fetch top 5 users with the most badges
+        top_users = UserQuestBadge.objects.values('quest_attempted__user__id', 'quest_attempted__user__nickname') \
+                        .annotate(badge_count=Count('badge')) \
+                        .order_by('-badge_count')[:5]
+
+        # Fetch badge details for each user
+        user_badge_details = []
+        for user in top_users:
+            user_id = user['quest_attempted__user__id']
+            quest_badges = UserQuestBadge.objects.filter(quest_attempted__user__id=user_id)
+            course_badges = UserCourseBadge.objects.filter(course_completed__user__id=user_id)
+            quest_badges_serializer = UserQuestBadgeSerializer(quest_badges, many=True)
+            course_badges_serializer = UserCourseBadgeSerializer(course_badges, many=True)
+            total_badge_count = quest_badges.count() + course_badges.count()
+            user_badge_details.append({
+                'user_id': user_id,
+                'nickname': user['quest_attempted__user__nickname'],
+                'badge_count': total_badge_count,
+                'quest_badges': quest_badges_serializer.data,
+                'course_badges': course_badges_serializer.data
+            })
+
+        # Fetch top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
+        recent_quest_badges = UserQuestBadge.objects.all().order_by('-id')[:5]
+        recent_course_badges = UserCourseBadge.objects.all().order_by('-id')[:5]
+
+        # Combine and sort the badges by the most recent award date
+        recent_badges = sorted(
+            list(recent_quest_badges) + list(recent_course_badges),
+            key=lambda badge: badge.awarded_date,
+            reverse=True
+        )[:5]
+
+        # Serialize the combined badge data
+        recent_badges_data = []
+        for badge in recent_badges:
+            if isinstance(badge, UserCourseBadge):
+                user_id = badge.course_completed.user.id
+                nickname = badge.course_completed.user.nickname
+                badge_data = UserCourseBadgeSerializer(badge).data
+
+            else:
+                user_id = badge.quest_attempted.user.id
+                nickname = badge.quest_attempted.user.nickname
+                badge_data = UserQuestBadgeSerializer(badge).data
+
+            badge_data.update({
+                'user_id': user_id,
+                'nickname': nickname
+            })
+            recent_badges_data.append(badge_data)
+
+        # Combine the data
+        data = {
+            'top_users_with_most_badges': user_badge_details,
+            'recent_badge_awards': recent_badges_data
+        }
+
+        return Response(data)

@@ -230,7 +230,8 @@ def create_private_course(sender, instance, created, **kwargs):
             name="Private Course",
             code=f"PRIVATE {instance.id}",
             type="Private",
-            description="This is a private Course created for you to generate Quests for your own use.",
+            description="This is a private Course created for you to generate Quests for your own usage. "
+                        "Only you can see this course.",
             status="Active",
             image=Image.objects.get(name="Private Course")
         )
