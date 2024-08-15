@@ -100,9 +100,9 @@ class CustomJWTAuthentication(JWTAuthentication):
             if created:
                 # Here you can add any additional setup for the new user
                 pass
-            # else:
-            #     user.last_login = last_login
-            #     user.save()
+            else:
+                user.last_login = last_login
+                user.save()
 
             return user
         except Exception as e:
