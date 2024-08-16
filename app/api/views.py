@@ -5,12 +5,14 @@ from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import JsonResponse
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.db.models import Count
 import json
 from .excel import Excel
 from rest_framework.response import Response
 from rest_framework import status
+from django.utils import timezone
+from django.db.models import Sum, F, ExpressionWrapper, fields, DurationField
 from .models import (
     EduquestUser,
     Image,
@@ -596,6 +598,137 @@ class DocumentByUserView(generics.ListAPIView):
         return Document.objects.filter(uploaded_by=user_id).order_by('-id')
 
 
+class AnalyticsPartOneView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Current time and time one week ago
+        now = timezone.now()
+        last_week = now - timedelta(weeks=1)
+
+        # 1. Total number of users excluding admin and new users since last week
+        total_users = EduquestUser.objects.exclude(is_staff=True).count()
+        new_users_last_week = EduquestUser.objects.exclude(is_staff=True).filter(date_joined__gte=last_week).count()
+        new_users_percentage = (new_users_last_week / total_users) * 100 if total_users > 0 else 0
+
+        # 2. Total number of course enrollments and new enrollments since last week
+        total_enrollments = UserCourse.objects.count()
+        new_enrollments_last_week = UserCourse.objects.filter(enrolled_on__gte=last_week).count()
+        new_enrollments_percentage = (new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
+
+        # 3. Total number of quest attempts and new attempts since last week
+        total_quest_attempts = UserQuestAttempt.objects.count()
+        new_quest_attempts_last_week = UserQuestAttempt.objects.filter(first_attempted_on__gte=last_week).count()
+        new_quest_attempts_percentage = (new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
+
+        # 4. User with the shortest non-zero time_taken and perfect score
+        # Filter UserQuestBadge for users with the "Perfectionist" badge
+        perfectionist_badge_attempts = UserQuestBadge.objects.filter(
+            badge__name="Perfectionist"
+        ).annotate(
+            time_taken=ExpressionWrapper(
+                F('quest_attempted__last_attempted_on') - F('quest_attempted__first_attempted_on'),
+                output_field=DurationField()
+            )
+        ).filter(
+            time_taken__gt=timedelta(seconds=0)
+        ).order_by('time_taken').first()
+
+        if perfectionist_badge_attempts:
+            shortest_time_user = {
+                'nickname': perfectionist_badge_attempts.quest_attempted.user.nickname,
+                'time_taken': int(perfectionist_badge_attempts.time_taken.total_seconds() * 1000),  # Convert to milliseconds and round to whole number                'quest_id': perfectionist_badge_attempts.quest_attempted.quest.id,
+                'quest_name': perfectionist_badge_attempts.quest_attempted.quest.name,
+                'course': f"{perfectionist_badge_attempts.quest_attempted.quest.from_course.code} {perfectionist_badge_attempts.quest_attempted.quest.from_course.name}"
+            }
+        else:
+            shortest_time_user = None
+
+        data = {
+            'user_stats': {
+                'total_users': total_users,
+                'new_users_percentage': new_users_percentage,
+            },
+            'course_enrollment_stats': {
+                'total_enrollments': total_enrollments,
+                'new_enrollments_percentage': new_enrollments_percentage,
+            },
+            'quest_attempt_stats': {
+                'total_quest_attempts': total_quest_attempts,
+                'new_quest_attempts_percentage': new_quest_attempts_percentage,
+            },
+            'shortest_time_user': shortest_time_user
+        }
+
+        return Response(data)
+
+
+class AnalyticsPartTwoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user_id = self.kwargs['user_id']
+
+        # Fetch a user's enrolled course progression, excluding courses with code "PRIVATE"
+        user_courses = UserCourse.objects.filter(user=user_id).exclude(course__name="Private Course").distinct('course').order_by('course__id')
+
+        # Aggregate the number of unique completed quests per course
+        course_quest_completion = []
+        for user_course in user_courses:
+            course_id = user_course.course.id
+            quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest__from_course=course_id, all_questions_submitted=True).distinct('quest')
+            completed_quests = quest_attempts.count()
+            total_quests = user_course.course.quests.count()
+            completion_ratio = completed_quests / total_quests if total_quests > 0 else 0
+            course_quest_completion.append({
+                'course_id': course_id,
+                'course_term': f"AY {user_course.course.term.academic_year.start_year} - {user_course.course.term.academic_year.end_year} {user_course.course.term.name}",
+                'course_name': f"{user_course.course.code} {user_course.course.name}",
+                'completed_quests': completed_quests,
+                'total_quests': total_quests,
+                'completion_ratio': completion_ratio
+            })
+
+        # Sort the results by completion ratio in descending order
+        course_quest_completion.sort(key=lambda x: x['completion_ratio'], reverse=True)
+
+        # Fetch a user's course badges and quest badges
+        user_quest_badges = UserQuestBadge.objects.filter(quest_attempted__user=user_id)
+        user_course_badges = UserCourseBadge.objects.filter(course_completed__user=user_id)
+
+        # Fetch all badges
+        all_badges = Badge.objects.all()
+
+        # Fetch a user's course badges and quest badges
+        user_quest_badges = UserQuestBadge.objects.filter(quest_attempted__user=user_id)
+        user_course_badges = UserCourseBadge.objects.filter(course_completed__user=user_id)
+
+        # Aggregate the badge data
+        badge_aggregation = {badge.id: {
+            'badge_id': badge.id,
+            'badge_name': badge.name,
+            'badge_filename': badge.image.filename if badge.image else None,
+            'count': 0
+        } for badge in all_badges}
+
+        for badge in user_quest_badges:
+            badge_id = badge.badge.id
+            badge_aggregation[badge_id]['count'] += 1
+
+        for badge in user_course_badges:
+            badge_id = badge.badge.id
+            badge_aggregation[badge_id]['count'] += 1
+
+        # Sort the badges by count in descending order
+        sorted_badge_aggregation = sorted(badge_aggregation.values(), key=lambda x: x['count'], reverse=True)
+
+        data = {
+            'user_course_progression': course_quest_completion,
+            'user_badge_progression': sorted_badge_aggregation
+        }
+        return Response(data)
+
+
 class AnalyticsPartThreeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -659,3 +792,5 @@ class AnalyticsPartThreeView(APIView):
         }
 
         return Response(data)
+
+

@@ -49,6 +49,8 @@ from .views import (
     DocumentUploadView,
     DocumentManageView,
     DocumentByUserView,
+    AnalyticsPartOneView,
+    AnalyticsPartTwoView,
     AnalyticsPartThreeView,
 )
 
@@ -117,5 +119,7 @@ urlpatterns = [
     path("Document/<int:pk>/", DocumentManageView.as_view(), name='Document-retrieve-update-destroy'),
     path("Document/by-user/<int:user_id>/", DocumentByUserView.as_view(), name='Document-by-user'),
 
+    path("Analytics/part-one/", AnalyticsPartOneView.as_view(), name='Analytics-part-one'),
+    path("Analytics/part-two/<int:user_id>/", AnalyticsPartTwoView.as_view(), name='Analytics-part-two'),
     path("Analytics/part-three/", AnalyticsPartThreeView.as_view(), name='Analytics-part-three'),
 ]
