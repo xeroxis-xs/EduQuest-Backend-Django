@@ -637,7 +637,8 @@ class AnalyticsPartOneView(APIView):
         if perfectionist_badge_attempts:
             shortest_time_user = {
                 'nickname': perfectionist_badge_attempts.quest_attempted.user.nickname,
-                'time_taken': int(perfectionist_badge_attempts.time_taken.total_seconds() * 1000),  # Convert to milliseconds and round to whole number                'quest_id': perfectionist_badge_attempts.quest_attempted.quest.id,
+                'time_taken': int(perfectionist_badge_attempts.time_taken.total_seconds() * 1000),  # Convert to milliseconds and round to whole number
+                'quest_id': perfectionist_badge_attempts.quest_attempted.quest.id,
                 'quest_name': perfectionist_badge_attempts.quest_attempted.quest.name,
                 'course': f"{perfectionist_badge_attempts.quest_attempted.quest.from_course.code} {perfectionist_badge_attempts.quest_attempted.quest.from_course.name}"
             }
