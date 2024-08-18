@@ -47,7 +47,7 @@ class EduquestUserSerializer(serializers.ModelSerializer):
         model = EduquestUser
         fields = ['id', 'first_name', 'last_name', 'username', 'email', 'nickname', 'last_login',
                   'updated_at', 'is_superuser', 'is_active', 'is_staff']
-        read_only_fields = ['first_name', 'last_name', 'is_superuser', 'updated_at', 'username']
+        read_only_fields = ['first_name', 'last_name', 'is_superuser', 'updated_at']
 
     def create(self, validated_data):
         username = validated_data['username']

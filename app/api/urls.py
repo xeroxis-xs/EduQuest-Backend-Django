@@ -11,6 +11,7 @@ from .views import (
     CourseListCreateView,
     CourseManageView,
     CourseByTermView,
+    CourseByUserView,
     UserCourseListCreateView,
     UserCourseManageView,
     QuestImportView,
@@ -18,6 +19,7 @@ from .views import (
     QuestManageView,
     QuestByCourseView,
     PrivateQuestByUserView,
+    QuestByEnrolledUser,
     QuestionListCreateView,
     QuestionManageView,
     QuestionByQuestView,
@@ -69,6 +71,7 @@ urlpatterns = [
     path("Course/", CourseListCreateView.as_view(), name='Course-list-create'),
     path("Course/<int:pk>/", CourseManageView.as_view(), name='Course-retrieve-update-destroy'),
     path("Course/by-term/<int:term_id>/", CourseByTermView.as_view(), name='Course-by-term'),
+    path("Course/by-user/<int:user_id>/", CourseByUserView.as_view(), name='Course-by-user'),
 
     path("UserCourse/", UserCourseListCreateView.as_view(), name='UserCourse-list-create'),
     path("UserCourse/<int:pk>/", UserCourseManageView.as_view(), name='UserCourse-retrieve-update-destroy'),
@@ -78,6 +81,7 @@ urlpatterns = [
     path("Quest/<int:pk>/", QuestManageView.as_view(), name='Quest-retrieve-update-destroy'),
     path("Quest/by-course/<int:course_id>/", QuestByCourseView.as_view(), name='Quest-by-course'),
     path("Quest/private/by-user/<int:user_id>/", PrivateQuestByUserView.as_view(), name='Private-Quest-by-user'),
+    path("Quest/by-enrolled-user/<int:user_id>/", QuestByEnrolledUser.as_view(), name='Quest-by-enrolled-user'),
 
     path("Question/", QuestionListCreateView.as_view(), name='Question-list-create'),
     path("Question/<int:pk>/", QuestionManageView.as_view(), name='Question-retrieve-update-destroy'),

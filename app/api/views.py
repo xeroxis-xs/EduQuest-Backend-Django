@@ -137,6 +137,15 @@ class CourseByTermView(generics.ListAPIView):
         return Course.objects.filter(term=term_id).order_by('-id')
 
 
+class CourseByUserView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CourseSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Course.objects.filter(enrolled_users__user=user_id).order_by('-id')
+
+
 class UserCourseListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -315,6 +324,14 @@ class PrivateQuestByUserView(generics.ListAPIView):
         user = self.request.user
         return Quest.objects.filter(organiser=user, type='Private').order_by('-id')
 
+
+class QuestByEnrolledUser(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = QuestSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Quest.objects.filter(from_course__enrolled_users__user=user_id).distinct().order_by('-id')
 
 class QuestionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
