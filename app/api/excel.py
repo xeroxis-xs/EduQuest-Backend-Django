@@ -37,13 +37,12 @@ class Excel():
             }
             is_mcq = False
 
-            # Check if the question is a MCQ by looking for 'Maximum score' row
-            for k in range(num_rows):
-                if df.iloc[k, 0] == 'Maximum score':
-                    question['max_score'] = df.iloc[k, 1]
-                    self.question_type_mapping_list.append({'sheet_name': sheet_name, 'is_mcq': True})
-                    is_mcq = True
-                    break
+            # Check if the question is a MCQ checking if row 3 is 'Choice'
+            # MCQ would display 'Choice' instead of 'Answer'
+            if df.iloc[1, 0] == 'Choice':
+                question['max_score'] = df.iloc[2, 1]
+                self.question_type_mapping_list.append({'sheet_name': sheet_name, 'is_mcq': True})
+                is_mcq = True
 
             # Get the answer options if it is a MCQ
             if is_mcq:
@@ -90,7 +89,14 @@ class Excel():
                     user_question_attempt = dict()
                     wooclap_selected_answer = self.main_results_sheet.iloc[i, j]
                     # Split the wooclap_selected_answer to get the answers part
-                    _, wooclap_selected = wooclap_selected_answer.split(" - ", 1)
+                    split_result = wooclap_selected_answer.split(" - ", 1)
+                    if len(split_result) == 2:
+                        _, wooclap_selected = split_result
+                    else:
+                        # Handle the case where the split does not result in exactly 2 elements
+                        # When user did not select any answer
+                        print("No answer selected")
+                        wooclap_selected = []
                     user_question_attempt['question'] = self.question_list[j - 5]['text']
                     user_question_attempt['selected_answers'] = []
                     # Iterate through each answer string

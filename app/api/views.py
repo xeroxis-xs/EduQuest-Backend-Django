@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 from django.db.models import Count
 import json
+import pytz
 from .excel import Excel
 from rest_framework.response import Response
 from rest_framework import status
@@ -187,7 +188,7 @@ class QuestImportView(APIView):
             'image': json.loads(request.data.get('image')),
             'organiser': json.loads(request.data.get('organiser'))
         }
-        last_attempted_on = datetime.now()
+        last_attempted_on = datetime.now(pytz.UTC)
         course = Course.objects.get(id=quest_data['from_course']['id'])
         print(course.id)
         # Create a Quest object
