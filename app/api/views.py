@@ -240,8 +240,7 @@ class QuestImportView(APIView):
                     'user': user.id,
                     'quest': {
                         'id': new_quest_id
-                    },
-                    'last_attempted_on': last_attempted_on,
+                    }
                 }
                 user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
                 if user_quest_attempt_serializer.is_valid():
@@ -449,7 +448,7 @@ class UserQuestQuestionAttemptByQuestView(generics.ListAPIView):
     def get_queryset(self):
         quest_id = self.kwargs['quest_id']
         user_quest_attempts = UserQuestAttempt.objects.filter(quest=quest_id)
-        return UserQuestQuestionAttempt.objects.filter(user_quest_attempt__in=user_quest_attempts).order_by('-id')
+        return UserQuestQuestionAttempt.objects.filter(user_quest_attempt__in=user_quest_attempts)
 
 
 class BulkUpdateUserQuestAttemptView(APIView):
@@ -496,6 +495,14 @@ class BulkUpdateUserQuestQuestionAttemptView(APIView):
         if serializer.is_valid():
             ids = [item.get('id') for item in request.data if 'id' in item]
             instances = UserQuestQuestionAttempt.objects.filter(id__in=ids)
+
+            # Check if Quest has expired
+            for instance in instances:
+                quest = Quest.objects.get(id=instance.user_quest_attempt.quest.id)
+                if quest.status == 'Expired':
+                    return Response({"detail": "Quest has expired."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    break
 
             # Add logging to debug
             print(f" UserQuestQuestionAttempt Instances found: {[instance.id for instance in instances]}")

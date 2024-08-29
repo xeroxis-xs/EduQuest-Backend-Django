@@ -11,7 +11,9 @@ image_list = [
     {"name": "Computer Organisation & Architecture", "filename": "computer_organisation_and_architecture.svg"},
     {"name": "Computer Security", "filename": "computer_security.svg"},
     {"name": "Data Structures & Algorithms", "filename": "data_structures_and_algorithms.svg"},
-    {"name": "Introduction to Database", "filename": "intro_to_database.svg"},
+    {"name": "Introduction to Databases", "filename": "intro_to_databases.svg"},
+    {"name": "Introduction to Computational Thinking and Programming", "filename": "intro_to_computational_thinking_and_programming.svg"},
+    {"name": "Probability & Statistics for Computing", "filename": "probability_and_statistics_for_computing.svg"},
     {"name": "Multiple Choice", "filename": "multiple_choice.svg"},
     {"name": "Wooclap", "filename": "wooclap.svg"},
     {"name": "Kahoot", "filename": "kahoot.svg"},
@@ -34,10 +36,10 @@ badge_list = [
     },
     {
         "name": "Completionist",
-        "description": "Awarded upon completing all quests within a course.",
+        "description": "Awarded upon completing all quests within a course after the course has ended.",
         "type": "Course",
         "image": "completionist_badge.svg",
-        "condition":  "Non-private quest, Completed all quests within a course"
+        "condition":  "Non-private quest, Completed all quests within a course, Course has ended and set to Expired by the instructor"
     },
     {
         "name": "Expert",
@@ -68,10 +70,6 @@ year_list = [
     {
         "start_year": 2024,
         "end_year": 2025
-    },
-    {
-        "start_year": 0,
-        "end_year": 0
     }
 ]
 
@@ -88,22 +86,18 @@ term_list = [
         "name": "Semester 2",
         "start_date": timezone.make_aware(datetime.datetime(2025, 1, 13, 0, 0, 0), sg_timezone),
         "end_date": timezone.make_aware(datetime.datetime(2025, 5, 9, 23, 59, 59), sg_timezone)
-    },
-    {
-        "name": "Private Term",
-        "start_date": None,
-        "end_date": None
     }
 ]
 
 course_list = [
-    {"name": "Cloud Computing", "code": "SC4052", "description": "Learn about cloud services, deployment models, and cloud architecture. Understand the benefits and challenges of cloud computing, and gain hands-on experience with leading cloud platforms."},
-    {"name": "Introduction to Data Science & Artificial Intelligence", "code": "SC1015", "description": "Explore data analysis, visualization, and machine learning techniques. Gain insights into data manipulation, statistical analysis, and predictive modeling using popular tools and libraries."},
-    {"name": "Artificial Intelligence", "code": "SC3000", "description": "Understand algorithms and models for machine learning and AI. Learn about supervised and unsupervised learning, neural networks, and deep learning, and apply these techniques to real-world problems."},
-    {"name": "Computer Organisation & Architecture", "code": "SC1006", "description": "Study the design and organization of computer systems. Learn about the principles of computer hardware, instruction sets, memory hierarchy, and parallel processing. Understand how different components of a computer system interact."},
-    {"name": "Computer Security", "code": "SC3010", "description": "Learn about protecting systems, networks, and data from cyber threats. Understand the fundamentals of cryptography, network security, and risk management, and explore the latest trends in cybersecurity."},
-    {"name": "Data Structures & Algorithms", "code": "SC1007", "description": "Understand data structures and algorithms for efficient problem-solving. Learn about arrays, linked lists, trees, graphs, sorting, and searching algorithms, and their applications in software development."},
-    {"name": "Probability & Statistics", "code": "SC2000", "description": "Explore the fundamentals of probability and statistics. Learn about probability distributions, hypothesis testing, regression analysis, and statistical modeling, and apply statistical methods to analyze data and make informed decisions."},
-    {"name": "Introduction to Computational Thinking and Programming", "code": "SC1003", "description": "The aim of this course is hence to take students with no prior experience of thinking in a computational manner to a point where you can derive simple algorithms and code the programs to solve some basic problems in your domain of studies. Student will also learn about basic program construct and simple data structures. In addition, the course will include topics to appreciate the internal operations of a processor"},
-    {"name": "Introduction to Database", "code": "SC2207", "description": "Learn about database design, management, and SQL. Understand relational databases, normalization, indexing, and transactions, and gain practical experience with database management systems."}
+    {"name": "Probability & Statistics for Computing", "code": "SC2000", "group": "SCED", "description": "This course provides the basic mathematical foundations for probability and statistics which are necessary for anyone pursuing a computing degree course. The course covers the basic concepts of probability and statistics, and their applications in computing."},
+    {"name": "Introduction to Computational Thinking and Programming", "code": "SC1003", "group": "SWLA", "description": "The aim of this course is hence to take students with no prior experience of thinking in a computational manner to a point where you can derive simple algorithms and code the programs to solve some basic problems in your domain of studies. Student will also learn about basic program construct and simple data structures."},
+    {"name": "Introduction to Databases", "code": "SC2207", "group": "SWDB", "description": "Learn about database design, management, and SQL. Understand relational databases, normalization, indexing, and transactions, and gain practical experience with database management systems."}
+
+    # {"name": "Cloud Computing", "code": "SC4052", "description": "Learn about cloud services, deployment models, and cloud architecture. Understand the benefits and challenges of cloud computing, and gain hands-on experience with leading cloud platforms."},
+    # {"name": "Introduction to Data Science & Artificial Intelligence", "code": "SC1015", "description": "Explore data analysis, visualization, and machine learning techniques. Gain insights into data manipulation, statistical analysis, and predictive modeling using popular tools and libraries."},
+    # {"name": "Artificial Intelligence", "code": "SC3000", "description": "Understand algorithms and models for machine learning and AI. Learn about supervised and unsupervised learning, neural networks, and deep learning, and apply these techniques to real-world problems."},
+    # {"name": "Computer Organisation & Architecture", "code": "SC1006", "description": "Study the design and organization of computer systems. Learn about the principles of computer hardware, instruction sets, memory hierarchy, and parallel processing. Understand how different components of a computer system interact."},
+    # {"name": "Computer Security", "code": "SC3010", "description": "Learn about protecting systems, networks, and data from cyber threats. Understand the fundamentals of cryptography, network security, and risk management, and explore the latest trends in cybersecurity."},
+    # {"name": "Data Structures & Algorithms", "code": "SC1007", "description": "Understand data structures and algorithms for efficient problem-solving. Learn about arrays, linked lists, trees, graphs, sorting, and searching algorithms, and their applications in software development."},
 ]

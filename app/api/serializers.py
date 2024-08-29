@@ -150,18 +150,20 @@ class CourseSerializer(serializers.ModelSerializer):
 
     # Do not update enrolled_users since it can be updated separately using UserCourseSerializer
     def update(self, instance, validated_data):
-        term_data = validated_data.pop('term')
-        image_data = validated_data.pop('image')
+        term_data = validated_data.pop('term', None)
+        image_data = validated_data.pop('image', None)
         # Remove enrolled_users from validated_data if there
         enrolled_users_data = validated_data.pop('enrolled_users', [])
 
-        # Remove academic_year from term_data
-        academic_year_data = term_data.pop('academic_year')
-        term = Term.objects.get(**term_data)
-        image = Image.objects.get(**image_data)
+        if term_data:
+            # Remove academic_year from term_data
+            academic_year_data = term_data.pop('academic_year')
+            term = Term.objects.get(**term_data)
+            instance.term = term
 
-        instance.term = term
-        instance.image = image
+        if image_data:
+            image = Image.objects.get(**image_data)
+            instance.image = image
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

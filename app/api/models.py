@@ -53,6 +53,7 @@ class Course(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='courses')
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=100, null=True, blank=True)
+    group = models.CharField(max_length=100, null=True, blank=True)
     type = models.CharField(max_length=100)  # Eduquest, Private
     description = models.TextField()
     status = models.CharField(max_length=100) # Active, Inactive
@@ -124,8 +125,8 @@ class UserQuestAttempt(models.Model):
     quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='attempted_by')
     # When the user first attempted the quest, automatically populate the date and time
     all_questions_submitted = models.BooleanField(default=False)
-    first_attempted_on = models.DateTimeField(auto_now_add=True)
-    last_attempted_on = models.DateTimeField()
+    first_attempted_on = models.DateTimeField(blank=True, null=True)
+    last_attempted_on = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.quest.name} - First attempt on {self.first_attempted_on}"
@@ -135,6 +136,8 @@ class UserQuestAttempt(models.Model):
         return self.question_attempts.aggregate(total_score_achieved=Sum('score_achieved'))['total_score_achieved'] or 0
 
     def time_taken(self):
+        if not self.first_attempted_on or not self.last_attempted_on:
+            return 0
         # Calculate the total time taken by subtracting the first_attempted_on from the last_attempted_on
         time_difference = self.last_attempted_on - self.first_attempted_on
         # If negative return 0
