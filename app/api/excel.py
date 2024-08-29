@@ -40,7 +40,15 @@ class Excel():
             # Check if the question is a MCQ checking if row 3 is 'Choice'
             # MCQ would display 'Choice' instead of 'Answer'
             if df.iloc[1, 0] == 'Choice':
-                question['max_score'] = df.iloc[2, 1]
+                # Scan for 'Maximum score' and get the value on the right cell
+                for i in range(num_rows):
+                    if df.iloc[i, 0] == 'Maximum score':
+                        question['max_score'] = df.iloc[i, 1]
+                        break
+
+                if 'max_score' not in question:
+                    raise Exception(f"Maximum score not found for question {sheet_name}")
+
                 self.question_type_mapping_list.append({'sheet_name': sheet_name, 'is_mcq': True})
                 is_mcq = True
 
