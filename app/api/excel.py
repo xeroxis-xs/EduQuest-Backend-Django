@@ -95,22 +95,28 @@ class Excel():
                 # Iterate through each mcq question to the end of the columns
                 for j in mcq_indices:
                     user_question_attempt = dict()
-                    wooclap_selected_answer = self.main_results_sheet.iloc[i, j]
-                    # Split the wooclap_selected_answer to get the answers part
-                    split_result = wooclap_selected_answer.split(" - ", 1)
-                    if len(split_result) == 2:
-                        _, wooclap_selected = split_result
+                    wooclap_selected_answer_string = self.main_results_sheet.iloc[i, j]
+                    # Check if the first character is '/'
+                    if wooclap_selected_answer_string[0] == '/':
+                        # User did not attempt the question
+                        print(f"wooclap_selected_answer_string: 'None'")
                     else:
-                        # Handle the case where the split does not result in exactly 2 elements
-                        # When user did not select any answer
-                        print("No answer selected")
-                        wooclap_selected = []
+                        # Get characters after the first 4 characters
+                        wooclap_selected_answer_string = wooclap_selected_answer_string[4:]
+                        print(f"wooclap_selected_answer_string: {wooclap_selected_answer_string}")
+
                     user_question_attempt['question'] = self.question_list[j - 5]['text']
                     user_question_attempt['selected_answers'] = []
                     # Iterate through each answer string
                     for answer in self.question_list[j - 5]['answers']:
-                        if answer['text'] in wooclap_selected:
+                        # Check if the answer is in the selected answers
+                        # E.g. If answer options are is 'Range', 'Inter-quartile Range', 'Mean', 'Median',
+                        # and the user selected 'Range', 'Range' will be appended to the selected answers
+                        # 'Inter-quartile Range' will not be appended
+                        if answer['text'] in wooclap_selected_answer_string.split(', '):
+                            print(f"Confirm selected answer: {answer['text']}")
                             user_question_attempt['selected_answers'].append(answer['text'])
+
                     user_question_attempt_list.append(user_question_attempt)
             i += 1
         # # Export to JSON

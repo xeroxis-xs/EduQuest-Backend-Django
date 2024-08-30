@@ -27,8 +27,8 @@ def award_perfectionist_quest_badges(sender, instance, created, **kwargs):
             quest = Quest.objects.get(id=instance.quest.id)
             if quest.type != "Private":
                 quest_max_score = quest.total_max_score()
-                print(f"[Perfectionist] Quest attempt score: {instance.total_score_achieved()} / {quest_max_score}")
-                if instance.total_score_achieved() == quest_max_score:
+                print(f"[Perfectionist] Quest attempt score: {instance.total_score_achieved} / {quest_max_score}")
+                if instance.total_score_achieved == quest_max_score:
                     # Award a badge to the user for obtaining full marks the quest
                     # If the user has already been awarded the badge for the same quest, do not award again
                     user_quest_badge, created = UserQuestBadge.objects.get_or_create(
@@ -94,7 +94,7 @@ def award_expert_quest_badge(sender, instance, created, **kwargs):
         if instance.status == "Expired" and instance.type != "Private":
             print(f"[Expert] Quest: {instance.name} has ended and expired")
             # Award a badge to the user for achieving the highest score on the quest
-            # Can be awrded to multiple users if they have the same highest score
+            # Can be awarded to multiple users if they have the same highest score
             # If the user has already been awarded the badge for the same quest, do not award again
             # If the highest is 0, do not award the badge
             user_quest_attempts = UserQuestAttempt.objects.filter(quest=instance)
@@ -102,7 +102,7 @@ def award_expert_quest_badge(sender, instance, created, **kwargs):
             highest_score_attempt_list_so_far = []
 
             for attempt in user_quest_attempts:
-                total_score = attempt.total_score_achieved()
+                total_score = attempt.total_score_achieved
                 if total_score > highest_score:
                     highest_score = total_score
                     highest_score_attempt_list_so_far = [attempt]
@@ -149,7 +149,7 @@ def award_speedster_quest_badge(sender, instance, created, **kwargs):
                     # Get the fastest attempt and its score
                     if sorted_by_time_taken_attempts:
                         fastest_attempt = sorted_by_time_taken_attempts[0]
-                        fastest_attempt_score = fastest_attempt.total_score_achieved()
+                        fastest_attempt_score = fastest_attempt.total_score_achieved
                     else:
                         fastest_attempt = None
                         fastest_attempt_score = 0
@@ -157,9 +157,9 @@ def award_speedster_quest_badge(sender, instance, created, **kwargs):
                     print(f"[Speedster] Fastest user: {fastest_attempt.user.id} with time: {fastest_attempt.time_taken()}ms "
                           f"and score: {fastest_attempt_score}")
                     # Sort by score taken descending
-                    sorted_by_score_attempts = sorted(user_quest_attempts, key=lambda x: (-x.total_score_achieved()))
-                    print(f"[Speedster] All scores: {[attempt.total_score_achieved() for attempt in sorted_by_score_attempts]}")
-                    attempts_unique_scores = sorted(set([attempt.total_score_achieved() for attempt in sorted_by_score_attempts]), reverse=True)
+                    sorted_by_score_attempts = sorted(user_quest_attempts, key=lambda x: (-x.total_score_achieved))
+                    print(f"[Speedster] All scores: {[attempt.total_score_achieved for attempt in sorted_by_score_attempts]}")
+                    attempts_unique_scores = sorted(set([attempt.total_score_achieved for attempt in sorted_by_score_attempts]), reverse=True)
                     top_three_scores = attempts_unique_scores[:3]
                     print(f"[Speedster] Top three unique scores: {top_three_scores}")
 
@@ -215,64 +215,6 @@ def set_user_course_completion(sender, instance, created, **kwargs):
                 user_course.completed_on = date_time_now
                 user_course.save(update_fields=['completed_on'])
                 print(f"[Set Course Completion] User: {user_id} has completed all quests in course: {instance.name}")
-
-            # # Iterate through each quest in the course
-            # for quest in instance.quests.all():
-            #     # Check if each user has submitted at least one attempt for the quest
-            #     for user_id in users:
-            #         if not UserQuestAttempt.objects.filter(quest=quest, user_id=user_id, all_questions_submitted=True).exists():
-            #             print(f"[Course Completion] User: {user_id} has not submitted any attempts in quest: {quest.name}")
-            #             return
-            #         user_course = UserCourse.objects.get(user_id=user_id, course=instance)
-            #         user_course.completed_on =
-
-        # if instance.all_questions_submitted and instance.quest.type != "Private":
-        #     print(f"[Course Completion] User: {instance.user.username} has completed quest: {instance.quest.name}")
-        #     # Check if the user has at least submitted one attempt for each quest within the course associated
-        #     course = Course.objects.get(id=instance.quest.from_course.id)
-        #     quests = course.quests.all()
-        #     # Iterate through each quest in the course
-        #     for quest in quests:
-        #         user_quest_attempts = UserQuestAttempt.objects.filter(user=instance.user, quest=quest, all_questions_submitted=True)
-        #         if user_quest_attempts.count() == 0:
-        #             print(f"[Course Completion] User: {instance.user.username} has not submitted any attempts in quest: {quest.name}")
-        #             return
-        #     print(f"[Course Completion] User: {instance.user.username} has completed all quests in course: {course.name}")
-        #     # Set the user course as completed with the last attempted date for the quest
-        #     user_course = UserCourse.objects.get(user=instance.user, course=course)
-        #     user_course.completed_on = instance.last_attempted_on
-        #     user_course.save(update_fields=['completed_on'])
-
-
-@receiver(post_save, sender=UserQuestQuestionAttempt)
-def calculate_score_for_a_question(sender, instance, created, **kwargs):
-    """
-    Calculate the score achieved for a question attempt based on the selected answers
-    """
-    if not created:
-        if instance.submitted:
-            correct_answer_count = 0
-            max_score = instance.question.max_score
-            answer_count = instance.question.answers.count()
-
-            # Calculate the number of correct answers based on the condition
-            for selected_answer in instance.selected_answers.all():
-                if selected_answer.is_selected == selected_answer.answer.is_correct:
-                    correct_answer_count += 1
-
-            # Calculate the score achieved
-            if answer_count > 0:
-                score_achieved = (correct_answer_count / answer_count) * max_score
-            else:
-                score_achieved = 0
-
-            instance.score_achieved = score_achieved
-
-            # Temporarily disconnect the signal to prevent recursion
-            signals.post_save.disconnect(receiver=calculate_score_for_a_question, sender=UserQuestQuestionAttempt)
-            instance.save(update_fields=['score_achieved'])
-            # Reconnect the signal
-            signals.post_save.connect(receiver=calculate_score_for_a_question, sender=UserQuestQuestionAttempt)
 
 
 @receiver(post_save, sender=EduquestUser)

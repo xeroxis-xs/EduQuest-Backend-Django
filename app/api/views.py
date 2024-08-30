@@ -168,14 +168,14 @@ class QuestImportView(APIView):
 
         excel_file = request.FILES.get('file')
         if not excel_file:
-            return JsonResponse({"No file provided, please try again"}, status=400)
+            return JsonResponse(data={"No file provided, please try again"}, status=400)
         try:
             excel = Excel()
             excel.read_excel_sheets(excel_file)
             questions_data = excel.get_questions()
             users_data = excel.get_users()
         except Exception as e:
-            return JsonResponse({"Error processing excel file: ": str(e)}, status=400)
+            return JsonResponse(data={"Error processing excel file": str(e)}, status=400)
 
         # Extract other form data
         quest_data = {
@@ -216,7 +216,7 @@ class QuestImportView(APIView):
                     # Return the question data
                     questions_serializer.append(question_serializer.data)
                 else:
-                    return Response(question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(data={"Error creating questions": question_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
             # Create UserQuestAttempt object (auto-generate UserQuestQuestionAttempt objects)
             for user_data in users_data:
@@ -251,7 +251,7 @@ class QuestImportView(APIView):
                     # user_question_attempts = UserQuestQuestionAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
                     # print(f"User question attempts: {user_question_attempts}")
                 else:
-                    return Response(user_quest_attempt_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(data={"Error user quest attempt template": user_quest_attempt_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
                 # Update the selected_answers for the auto-generated UserQuestQuestionAttempt
                 user_question_attempts = UserQuestQuestionAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
@@ -290,7 +290,7 @@ class QuestImportView(APIView):
 
             return Response(questions_serializer, status=status.HTTP_201_CREATED)
         else:
-            return Response(quest_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(data={"Error creating quest": quest_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class QuestListCreateView(generics.ListCreateAPIView):

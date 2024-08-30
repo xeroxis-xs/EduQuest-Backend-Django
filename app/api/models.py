@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.text import slugify
 from .utils import split_full_name
-from django.db.models import Sum
+from django.db.models import Sum, Max, F, Subquery, OuterRef
 from storages.backends.azure_storage import AzureStorage
 
 
@@ -12,6 +12,7 @@ class EduquestUser(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    total_points = models.FloatField(default=0)
 
     def __str__(self):
         return f"{self.id}"
@@ -21,6 +22,7 @@ class EduquestUser(AbstractUser):
             self.nickname = self.username.replace("#", "")
             self.first_name, self.last_name = split_full_name(self.nickname)
         super().save(*args, **kwargs)
+
 
 
 class Image(models.Model):
@@ -127,12 +129,13 @@ class UserQuestAttempt(models.Model):
     all_questions_submitted = models.BooleanField(default=False)
     first_attempted_on = models.DateTimeField(blank=True, null=True)
     last_attempted_on = models.DateTimeField(blank=True, null=True)
+    total_score_achieved = models.FloatField(default=0)
 
     def __str__(self):
-        return f"{self.user.username} - {self.quest.name} - First attempt on {self.first_attempted_on}"
+        return f"{self.id} {self.user.username} - {self.quest.name} - First attempt on {self.first_attempted_on}"
 
     # Calculate the total score achieved by the user for all questions in a quest
-    def total_score_achieved(self):
+    def calculate_total_score_achieved(self):
         return self.question_attempts.aggregate(total_score_achieved=Sum('score_achieved'))['total_score_achieved'] or 0
 
     def time_taken(self):

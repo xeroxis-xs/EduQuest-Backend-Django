@@ -18,13 +18,13 @@ class Command(BaseCommand):
         self.read_excel_sheets()
         self.get_questions()
         self.get_users()
-        # for user in self.user_list:
-        #     email = user['email']
-        #     self.get_user_question_attempts(email)
+        for user in self.user_list:
+            email = user['email']
+            self.get_user_question_attempts(email)
 
     def read_excel_sheets(self):
         print("Reading Excel Sheets")
-        excel_file = 'app/api/management/commands/JUQSDR_Tutorial_1-results.xlsx'
+        excel_file = 'app/api/management/commands/test_selected_answer.xlsx'
         self.xls = pd.ExcelFile(excel_file, engine='openpyxl')
         self.sheets = self.xls.sheet_names
         self.main_results_sheet = pd.read_excel(self.xls, sheet_name=self.xls.sheet_names[0])
@@ -115,23 +115,27 @@ class Command(BaseCommand):
                     # Iterate through each mcq question to the end of the columns
                     for j in mcq_indices:
                         user_question_attempt = dict()
-                        wooclap_selected_answer = self.main_results_sheet.iloc[i, j]
-                        # Split the wooclap_selected_answer to get the answers part
-                        split_result = wooclap_selected_answer.split(" - ", 1)
-                        if len(split_result) == 2:
-                            _, wooclap_selected = split_result
+                        wooclap_selected_answer_string = self.main_results_sheet.iloc[i, j]
+                        # Check if the first character is '/'
+                        if wooclap_selected_answer_string[0] == '/':
+                            # User did not attempt the question
+                            print(f"wooclap_selected_answer_string: 'None'")
                         else:
-                            # Handle the case where the split does not result in exactly 2 elements
-                            # When user did not select any answer
-                            print("No answer selected")
-                            wooclap_selected = []
+                            # Get characters after the first 4 characters
+                            wooclap_selected_answer_string = wooclap_selected_answer_string[4:]
+                            print(f"wooclap_selected_answer_string: {wooclap_selected_answer_string}")
+
                         user_question_attempt['question'] = self.question_list[j - 5]['text']
                         user_question_attempt['selected_answers'] = []
                         # Iterate through each answer string
                         for answer in self.question_list[j - 5]['answers']:
-                            if answer['text'] in wooclap_selected:
+                            # Check if the answer is in the selected answers
+                            # E.g. If answer options are is 'Range', 'Inter-quartile Range', 'Mean', 'Median',
+                            # and the user selected 'Range', 'Range' will be appended to the selected answers
+                            # 'Inter-quartile Range' will not be appended
+                            if answer['text'] in wooclap_selected_answer_string.split(', '):
+                                print(f"Confirm selected answer: {answer['text']}")
                                 user_question_attempt['selected_answers'].append(answer['text'])
-                                print(user_question_attempt)
 
                         user_question_attempt_list.append(user_question_attempt)
                 i += 1
@@ -139,7 +143,7 @@ class Command(BaseCommand):
             print(f"Error getting {email} question attempts: {str(e)}")
         # Export to JSON
         # Ensure the file is opened in write mode
-        with open('questions.json', 'w') as f:
+        with open('app/api/management/commands/questions.json', 'w') as f:
             try:
                 # Verify that user_question_attempt_list is correctly populated
                 if user_question_attempt_list:

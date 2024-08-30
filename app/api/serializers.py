@@ -46,7 +46,7 @@ class EduquestUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = EduquestUser
         fields = ['id', 'first_name', 'last_name', 'username', 'email', 'nickname', 'last_login',
-                  'updated_at', 'is_superuser', 'is_active', 'is_staff']
+                  'updated_at', 'is_superuser', 'is_active', 'is_staff', 'total_points']
         read_only_fields = ['first_name', 'last_name', 'is_superuser', 'updated_at', 'username']
 
     def create(self, validated_data):
@@ -329,18 +329,19 @@ class QuestionSerializer(serializers.ModelSerializer):
 class UserQuestAttemptSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
     quest = QuestSerializer(required=False)
-    total_score_achieved = serializers.SerializerMethodField(required=False, read_only=True)
+    # total_score_achieved = serializers.SerializerMethodField(required=False, read_only=True)
     time_taken = serializers.SerializerMethodField(required=False, read_only=True)
+    total_score_achieved = serializers.FloatField(required=False)
 
     class Meta:
         model = UserQuestAttempt
         fields = '__all__'
         list_serializer_class = BulkSerializer
 
-    def get_total_score_achieved(self, obj):
-        if isinstance(obj, OrderedDict):
-            return None
-        return obj.total_score_achieved()
+    # def get_total_score_achieved(self, obj):
+    #     if isinstance(obj, OrderedDict):
+    #         return None
+    #     return obj.total_score_achieved()
 
     def get_time_taken(self, obj):
         if isinstance(obj, OrderedDict):
@@ -376,12 +377,36 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Exclude aggregated fields from the update process
-        validated_data.pop('total_score_achieved', None)
         validated_data.pop('time_taken', None)
+
+        # Get the user's highest score achieved for all quest attempted in this quest
+        user_quest_attempts = UserQuestAttempt.objects.filter(user=instance.user, quest=instance.quest)
+        highest_score_achieved = 0
+        for user_quest_attempt in user_quest_attempts:
+            if user_quest_attempt.total_score_achieved > highest_score_achieved:
+                highest_score_achieved = user_quest_attempt.total_score_achieved
+
+        # Aggregate the total_score_achieved when the all_questions_submitted is True from False
+        all_questions_submitted = validated_data.get('all_questions_submitted', None)
+        if all_questions_submitted and not instance.all_questions_submitted:
+            validated_data.pop('all_questions_submitted', None)
+            validated_data.pop('total_score_achieved', None)
+            total_score_achieved = instance.calculate_total_score_achieved()
+            instance.total_score_achieved = total_score_achieved
+            instance.all_questions_submitted = True
+
+            # Check if the user's total_score_achieved is higher than the highest_score_achieved
+            # If it is, credit the amount to the user's total_points
+            if total_score_achieved > highest_score_achieved:
+                instance.user.total_points += total_score_achieved - highest_score_achieved
+                instance.user.save()
+
 
         # Update other fields as usual
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
+        print("Instance: ", instance.total_score_achieved)  # Debugging
 
         instance.save()
         return instance
