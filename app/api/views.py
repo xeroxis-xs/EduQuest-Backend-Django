@@ -255,38 +255,41 @@ class QuestImportView(APIView):
 
                 # Update the selected_answers for the auto-generated UserQuestQuestionAttempt
                 user_question_attempts = UserQuestQuestionAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
-                # Iterate through each user_question_attempt question
-                for user_question_attempt in user_question_attempts:
-                    print(f"User question attempt: {user_question_attempt.question.text}")
-                    # Get the wooclap_questions_selected_answers for the user
-                    print(f"User: {user.email}")
-                    wooclap_questions_selected_answers = excel.get_user_question_attempts(user.email)
-                    print(f"Wooclap questions selected answers: {wooclap_questions_selected_answers}")
-                    # Iterate through each wooclap_question_selected_answers
-                    for wooclap_question_selected_answers in wooclap_questions_selected_answers:
-                        # print(f"Wooclap question selected answers: {wooclap_question_selected_answers}")
-                        # If the question in the wooclap_question_selected_answers matches
-                        # the user_question_attempt question
-                        """
-                        wooclap_question_selected_answers
-                        {
-                            'question': 'What is the primary key in a database?', 
-                            'selected_answers': ['A field in a table that uniquely identifies each row']
-                        }
-                        """
-                        if wooclap_question_selected_answers['question'] == user_question_attempt.question.text:
-                            # Get the AttemptAnswerRecord objects for the user_question_attempt
-                            answer_records = AttemptAnswerRecord.objects.filter(user_quest_question_attempt=user_question_attempt.id)
+                try:
+                    # Iterate through each user_question_attempt question
+                    for user_question_attempt in user_question_attempts:
+                        print(f"User question attempt: {user_question_attempt.question.text}")
+                        # Get the wooclap_questions_selected_answers for the user
+                        print(f"User: {user.email}")
+                        wooclap_questions_selected_answers = excel.get_user_question_attempts(user.email)
+                        print(f"Wooclap questions selected answers: {wooclap_questions_selected_answers}")
+                        # Iterate through each wooclap_question_selected_answers
+                        for wooclap_question_selected_answers in wooclap_questions_selected_answers:
+                            # print(f"Wooclap question selected answers: {wooclap_question_selected_answers}")
+                            # If the question in the wooclap_question_selected_answers matches
+                            # the user_question_attempt question
+                            """
+                            wooclap_question_selected_answers
+                            {
+                                'question': 'What is the primary key in a database?', 
+                                'selected_answers': ['A field in a table that uniquely identifies each row']
+                            }
+                            """
+                            if wooclap_question_selected_answers['question'] == user_question_attempt.question.text:
+                                # Get the AttemptAnswerRecord objects for the user_question_attempt
+                                answer_records = AttemptAnswerRecord.objects.filter(user_quest_question_attempt=user_question_attempt.id)
 
-                            # Iterate through each answer record in selected_answers
-                            for wooclap_selected_answer in wooclap_question_selected_answers['selected_answers']:
-                                # Iterate through each selected answer
-                                for selected_answer in answer_records:
-
-                                    if selected_answer.answer.text == wooclap_selected_answer:
-                                        # print(f"Selected answer: {selected_answer.answer.text}")
-                                        selected_answer.is_selected = True
-                                        selected_answer.save()
+                                # Iterate through each answer record in selected_answers
+                                for wooclap_selected_answer in wooclap_question_selected_answers['selected_answers']:
+                                    # Iterate through each 'empty' attempted answer records in the system
+                                    for answer_record in answer_records:
+                                        # If the answer text in the answer record matches the selected answer in wooclap
+                                        if answer_record.answer.text == wooclap_selected_answer:
+                                            # print(f"Selected answer: {selected_answer.answer.text}")
+                                            answer_record.is_selected = True
+                                            answer_record.save()
+                except Exception as e:
+                    return Response(data={"Error updating selected answers": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response(questions_serializer, status=status.HTTP_201_CREATED)
         else:
@@ -505,7 +508,7 @@ class BulkUpdateUserQuestQuestionAttemptView(APIView):
                     break
 
             # Add logging to debug
-            print(f" UserQuestQuestionAttempt Instances found: {[instance.id for instance in instances]}")
+            print(f"UserQuestQuestionAttempt Instances found: {[instance.id for instance in instances]}")
 
             if len(instances) != len(ids):
                 return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)

@@ -401,12 +401,9 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
                 instance.user.total_points += total_score_achieved - highest_score_achieved
                 instance.user.save()
 
-
         # Update other fields as usual
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
-        print("Instance: ", instance.total_score_achieved)  # Debugging
 
         instance.save()
         return instance
