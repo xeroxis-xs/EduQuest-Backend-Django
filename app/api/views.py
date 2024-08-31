@@ -640,13 +640,14 @@ class AnalyticsPartOneView(APIView):
         new_users_percentage = (new_users_last_week / total_users) * 100 if total_users > 0 else 0
 
         # 2. Total number of course enrollments and new enrollments since last week
-        total_enrollments = UserCourse.objects.count()
-        new_enrollments_last_week = UserCourse.objects.filter(enrolled_on__gte=last_week).count()
+        total_enrollments = UserCourse.objects.exclude(course__type="Private").count()
+        new_enrollments_last_week = UserCourse.objects.exclude(course__type="Private").filter(
+            enrolled_on__gte=last_week).count()
         new_enrollments_percentage = (new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
 
         # 3. Total number of quest attempts and new attempts since last week
-        total_quest_attempts = UserQuestAttempt.objects.count()
-        new_quest_attempts_last_week = UserQuestAttempt.objects.filter(first_attempted_on__gte=last_week).count()
+        total_quest_attempts = UserQuestAttempt.objects.exclude(quest__type="Private").count()
+        new_quest_attempts_last_week = UserQuestAttempt.objects.exclude(quest__type="Private").filter(first_attempted_on__gte=last_week).count()
         new_quest_attempts_percentage = (new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
 
         # 4. User with the shortest non-zero time_taken and perfect score
