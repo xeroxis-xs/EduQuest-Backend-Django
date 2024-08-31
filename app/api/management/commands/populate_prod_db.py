@@ -9,6 +9,7 @@ from ...models import (
     AcademicYear,
     Term,
     Badge,
+    Document,
 )
 from .template import *
 
@@ -27,11 +28,19 @@ class Command(BaseCommand):
 
 
     def clear_db(self):
-        eduquestUsers = EduquestUser.objects.filter(id__gt=2)
+        eduquestUsers = EduquestUser.objects.filter(id__gt=1)
         eduquestUsers.delete()
         Image.objects.all().delete()
         AcademicYear.objects.all().delete()
         Badge.objects.all().delete()
+
+        confirm = input("Do you want to delete all the uploaded documents in Azure Storage? (y/n): ")
+        if confirm.lower() == 'y':
+            Document.objects.all().delete()
+            print("Deleted all Document objects")
+        else:
+            print("Skipped deleting Document objects")
+
         print("Cleared all tables")
 
     def create_images(self):

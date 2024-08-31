@@ -219,31 +219,39 @@ class QuestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from_course_data = validated_data.pop('from_course', None)
-        enrolled_users_data = from_course_data.pop('enrolled_users', [])
-        term_data = from_course_data.pop('term')
-        academic_year_data = term_data.pop('academic_year')
-        course_image_data = from_course_data.pop('image')
-        organiser_data = validated_data.pop('organiser')
-        # organiser_data.pop('username')
-        image_data = validated_data.pop('image')
+        from_course = None
+        organiser = None
+        image = None
+        if from_course_data:
+            enrolled_users_data = from_course_data.pop('enrolled_users', [])
+            course_image_data = from_course_data.pop('image', None)
+            term_data = from_course_data.pop('term', None)
+            if term_data:
+                academic_year_data = term_data.pop('academic_year')
+                academic_year = AcademicYear.objects.get(**academic_year_data)
 
-        academic_year = AcademicYear.objects.get(**academic_year_data)
-        from_course = Course.objects.get(
-            term=Term.objects.get(academic_year=academic_year, **term_data),
-            image=Image.objects.get(**course_image_data),
-            **from_course_data)
-        organiser = EduquestUser.objects.get(**organiser_data)
-        image = Image.objects.get(**image_data)
+                from_course = Course.objects.get(
+                    term=Term.objects.get(academic_year=academic_year, **term_data),
+                    image=Image.objects.get(**course_image_data),
+                    **from_course_data)
+
+        organiser_data = validated_data.pop('organiser')
+        if organiser_data:
+            organiser = EduquestUser.objects.get(**organiser_data)
+
+        image_data = validated_data.pop('image')
+        if image_data:
+            image = Image.objects.get(**image_data)
 
         # Create the Quest instance with the retrieved Course and EduquestUser
-        quest = Quest.objects.create(
-            from_course=from_course,
-            organiser=organiser,
-            image=image,
-            **validated_data
-        )
-
-        return quest
+        if from_course and organiser and image:
+            quest = Quest.objects.create(
+                from_course=from_course,
+                organiser=organiser,
+                image=image,
+                **validated_data
+            )
+            return quest
 
     def update(self, instance, validated_data):
         from_course_data = validated_data.pop('from_course', None)
@@ -397,7 +405,7 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
 
             # Check if the user's total_score_achieved is higher than the highest_score_achieved
             # If it is, credit the amount to the user's total_points
-            if total_score_achieved > highest_score_achieved:
+            if total_score_achieved > highest_score_achieved and instance.quest.type != 'Private':
                 instance.user.total_points += total_score_achieved - highest_score_achieved
                 instance.user.save()
 
