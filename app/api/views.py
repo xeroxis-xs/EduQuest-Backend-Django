@@ -722,10 +722,6 @@ class AnalyticsPartTwoView(APIView):
         # Sort the results by completion ratio in descending order
         course_quest_completion.sort(key=lambda x: x['completion_ratio'], reverse=True)
 
-        # Fetch a user's course badges and quest badges
-        user_quest_badges = UserQuestBadge.objects.filter(quest_attempted__user=user_id)
-        user_course_badges = UserCourseBadge.objects.filter(course_completed__user=user_id)
-
         # Fetch all badges
         all_badges = Badge.objects.all()
 
@@ -748,6 +744,9 @@ class AnalyticsPartTwoView(APIView):
         for badge in user_course_badges:
             badge_id = badge.badge.id
             badge_aggregation[badge_id]['count'] += 1
+
+        # Exclude badges with a count of 0
+        badge_aggregation = {k: v for k, v in badge_aggregation.items() if v['count'] > 0}
 
         # Sort the badges by count in descending order
         sorted_badge_aggregation = sorted(badge_aggregation.values(), key=lambda x: x['count'], reverse=True)
