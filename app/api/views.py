@@ -153,6 +153,19 @@ class UserCourseListCreateView(generics.ListCreateAPIView):
     queryset = UserCourse.objects.all().order_by('-id')
     serializer_class = UserCourseSerializer
 
+    def perform_create(self, serializer):
+        user = self.request.data.get('user')
+        if user and isinstance(user, dict):
+            user_id = user['id']
+            user = EduquestUser.objects.get(id=user_id)
+        course = self.request.data.get('course')
+        if course and isinstance(course, dict):
+            course_id = course['id']
+            course = Course.objects.get(id=course_id)
+        if UserCourse.objects.filter(user=user, course=course).exists():
+            return  # Do nothing if the user is already enrolled in the course
+        serializer.save()
+
 
 class UserCourseManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]

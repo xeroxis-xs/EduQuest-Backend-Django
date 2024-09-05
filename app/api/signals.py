@@ -222,7 +222,7 @@ def create_private_course(sender, instance, created, **kwargs):
     """
     Create a private course for newly created users where they can generate quests for their own usage
     """
-    if created:
+    if created and instance.username != "admin":
         private_year, _ = AcademicYear.objects.get_or_create(
             start_year=0,
             end_year=0

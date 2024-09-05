@@ -49,10 +49,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'drf_yasg',
-    'api',
+    'api',  # Use this instead of 'app.api'
     'rest_framework_simplejwt',
     'storages',
 ]
+
+TEST_RUNNER = 'api.test.populate_db_before_test.PopulateDBBeforeTest'
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -69,20 +72,6 @@ AZURE_CLIENT_ID = os.environ.get('AZURE_AD_CLIENT_ID')
 AZURE_TENANT_ID = 'common'
 AZURE_AUTHORITY = f'https://login.microsoftonline.com/{AZURE_TENANT_ID}'
 
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#     'ROTATE_REFRESH_TOKENS': False,
-#     'BLACKLIST_AFTER_ROTATION': True,
-#     'UPDATE_LAST_LOGIN': False,
-#     'ALGORITHM': 'RS256',  # Use RS256 for Azure AD tokens
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-#     'USER_ID_FIELD': 'id',
-#     'USER_ID_CLAIM': 'user_id',
-#     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-#     'TOKEN_TYPE_CLAIM': 'token_type',
-#     "SIGNING_KEY": os.environ.get('SECRET_KEY'),
-# }
 
 AUTH_USER_MODEL = 'api.EduquestUser'
 

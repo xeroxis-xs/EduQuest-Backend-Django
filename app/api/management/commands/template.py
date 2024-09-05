@@ -15,8 +15,6 @@ image_list = [
     {"name": "Introduction to Computational Thinking and Programming", "filename": "intro_to_computational_thinking_and_programming.svg"},
     {"name": "Probability & Statistics for Computing", "filename": "probability_and_statistics_for_computing.svg"},
     {"name": "Multiple Choice", "filename": "multiple_choice.svg"},
-    {"name": "Wooclap", "filename": "wooclap.svg"},
-    {"name": "Kahoot", "filename": "kahoot.svg"},
     {"name": "First Attempt Badge", "filename": "first_attempt_badge.svg"},
     {"name": "Completionist Badge", "filename": "completionist_badge.svg"},
     {"name": "Expert Badge", "filename": "expert_badge.svg"},
@@ -24,6 +22,8 @@ image_list = [
     {"name": "Perfectionist Badge", "filename": "perfectionist_badge.svg"},
     {"name": "Private Course", "filename": "private_course.svg"},
     {"name": "Private Quest", "filename": "private_quest.svg"},
+    {"name": "Kahoot Quest", "filename": "kahoot.svg"},
+    {"name": "Wooclap Quest", "filename": "wooclap.svg"},
 ]
 
 badge_list = [

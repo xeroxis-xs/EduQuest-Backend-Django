@@ -1,20 +1,21 @@
 from django.contrib import admin
 from .models import (
     EduquestUser,
+    Image,
     AcademicYear,
     Term,
     Course,
+    UserCourse,
     Quest,
     Question,
     Answer,
-    AttemptAnswerRecord,
     UserQuestAttempt,
     UserQuestQuestionAttempt,
-    UserCourse,
-    Image,
+    AttemptAnswerRecord,
     Badge,
     UserQuestBadge,
-    UserCourseBadge
+    UserCourseBadge,
+    Document
 )
 
 
@@ -34,5 +35,6 @@ admin.site.register(Badge)
 admin.site.register(UserQuestBadge)
 admin.site.register(UserCourseBadge)
 admin.site.register(Image)
+admin.site.register(Document)
 
 
