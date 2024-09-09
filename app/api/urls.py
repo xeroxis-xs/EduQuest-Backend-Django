@@ -9,6 +9,7 @@ from .views import (
     TermListCreateView,
     TermManageView,
     CourseListCreateView,
+    NonPrivateCourseListCreateView,
     CourseManageView,
     CourseByTermView,
     CourseByUserView,
@@ -69,6 +70,7 @@ urlpatterns = [
     path("Term/<int:pk>/", TermManageView.as_view(), name='Term-retrieve-update-destroy'),
 
     path("Course/", CourseListCreateView.as_view(), name='Course-list-create'),
+    path("Course/non-private/", NonPrivateCourseListCreateView.as_view(), name='Course-non-private-list-create'),
     path("Course/<int:pk>/", CourseManageView.as_view(), name='Course-retrieve-update-destroy'),
     path("Course/by-term/<int:term_id>/", CourseByTermView.as_view(), name='Course-by-term'),
     path("Course/by-user/<int:user_id>/", CourseByUserView.as_view(), name='Course-by-user'),

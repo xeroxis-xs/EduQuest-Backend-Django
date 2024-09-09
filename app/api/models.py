@@ -56,9 +56,9 @@ class Course(models.Model):
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=100, null=True, blank=True)
     group = models.CharField(max_length=100, null=True, blank=True)
-    type = models.CharField(max_length=100)  # Eduquest, Private
+    type = models.CharField(max_length=100)  # System-enroll, Self-enroll, Private
     description = models.TextField()
-    status = models.CharField(max_length=100) # Active, Inactive
+    status = models.CharField(max_length=100)  # Active, Expired
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):

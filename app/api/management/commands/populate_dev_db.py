@@ -99,7 +99,7 @@ class Command(BaseCommand):
                         term=term,
                         name=f"{course_item['name']}",
                         code=course_item["code"],
-                        type="Public",
+                        type="System-enroll",
                         description=course_item["description"],
                         status="Active",
                         image=Image.objects.get(name=course_item["name"])

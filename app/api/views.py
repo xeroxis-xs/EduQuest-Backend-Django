@@ -122,6 +122,13 @@ class CourseListCreateView(generics.ListCreateAPIView):
     serializer_class = CourseSerializer
 
 
+class NonPrivateCourseListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = Course.objects.exclude(type='Private').order_by('-id')
+    serializer_class = CourseSerializer
+
+
 class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
