@@ -723,7 +723,7 @@ class AnalyticsPartTwoView(APIView):
         user_id = self.kwargs['user_id']
 
         # Fetch a user's enrolled course progression, excluding courses with code "PRIVATE"
-        user_courses = UserCourse.objects.filter(user=user_id).exclude(course__name="Private Course").distinct('course').order_by('course__id')
+        user_courses = UserCourse.objects.filter(user=user_id).exclude(course__name="Private Course")
 
         # Aggregate the number of unique completed quests per course
         course_quest_completion = []
@@ -733,13 +733,30 @@ class AnalyticsPartTwoView(APIView):
             completed_quests = quest_attempts.count()
             total_quests = user_course.course.quests.count()
             completion_ratio = completed_quests / total_quests if total_quests > 0 else 0
+
+            # Get the highest score for each quest attempted in the course
+            quest_scores = []
+            for quest in user_course.course.quests.all():
+                quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest=quest)
+                if quest_attempts.exists():
+                    highest_score = quest_attempts.aggregate(highest_score=Sum('total_score_achieved'))['highest_score']
+                else:
+                    highest_score = 0
+                quest_scores.append({
+                    'quest_id': quest.id,
+                    'quest_name': quest.name,
+                    'max_score': quest.total_max_score(),
+                    'highest_score': highest_score
+                })
+
             course_quest_completion.append({
                 'course_id': course_id,
                 'course_term': f"AY {user_course.course.term.academic_year.start_year} - {user_course.course.term.academic_year.end_year} {user_course.course.term.name}",
                 'course_name': f"{user_course.course.code} {user_course.course.name}",
                 'completed_quests': completed_quests,
                 'total_quests': total_quests,
-                'completion_ratio': completion_ratio
+                'completion_ratio': completion_ratio,
+                'quest_scores': quest_scores
             })
 
         # Sort the results by completion ratio in descending order
