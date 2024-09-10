@@ -204,11 +204,12 @@ class QuestImportView(APIView):
             'description': request.data.get('description'),
             'status': request.data.get('status'),
             'max_attempts': request.data.get('max_attempts'),
+            'tutorial_date': request.data.get('tutorial_date'),
             'from_course': json.loads(request.data.get('from_course')),
             'image': json.loads(request.data.get('image')),
             'organiser': json.loads(request.data.get('organiser'))
         }
-        last_attempted_on = datetime.now(pytz.UTC)
+        last_attempted_on = quest_data['tutorial_date']
         course = Course.objects.get(id=quest_data['from_course']['id'])
         print(course.id)
         # Create a Quest object
@@ -260,7 +261,9 @@ class QuestImportView(APIView):
                     'user': user.id,
                     'quest': {
                         'id': new_quest_id
-                    }
+                    },
+                    'first_attempted_on': last_attempted_on,
+                    'last_attempted_on': last_attempted_on,
                 }
                 user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
                 if user_quest_attempt_serializer.is_valid():
@@ -841,5 +844,45 @@ class AnalyticsPartThreeView(APIView):
         }
 
         return Response(data)
+
+
+class AnalyticsPartFourView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Get the list of the courses that the user is enrolled in
+        # Get the highest score for each quest attempted in each course
+        # If the user did not attempt any of the quest in the course, return 0
+        user_id = self.kwargs['user_id']
+        user_courses = UserCourse.objects.filter(user=user_id).exclude(course__type='Private')
+        course_quest_scores = []
+        for user_course in user_courses:
+            course = user_course.course
+            course_quests = course.quests.all()
+            quest_scores = []
+            for quest in course_quests:
+                quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest=quest)
+                if quest_attempts.exists():
+                    highest_score = quest_attempts.aggregate(highest_score=Sum('total_score_achieved'))['highest_score']
+                    quest_scores.append({
+                        'quest_id': quest.id,
+                        'quest_name': quest.name,
+                        'max_score': quest.total_max_score(),
+                        'highest_score': highest_score
+                    })
+                else:
+                    quest_scores.append({
+                        'quest_id': quest.id,
+                        'quest_name': quest.name,
+                        'max_score': quest.total_max_score(),
+                        'highest_score': 0
+                    })
+            course_quest_scores.append({
+                'course_id': course.id,
+                'course_code': course.code,
+                'course_name': course.name,
+                'quests': quest_scores
+            })
+        return Response(course_quest_scores)
 
 

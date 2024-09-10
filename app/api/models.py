@@ -81,6 +81,7 @@ class Quest(models.Model):
     description = models.TextField()
     type = models.CharField(max_length=50)  # EduQuest MCQ, Kahoot!, WooClap, Private
     status = models.CharField(max_length=50, default="Active")  # Active, Expired
+    tutorial_date = models.DateTimeField(null=True, blank=True)
     expiration_date = models.DateTimeField(null=True, blank=True)
     max_attempts = models.PositiveIntegerField(default=1)
     organiser = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='quests_organised')

@@ -1,5 +1,6 @@
-import random
-
+import os
+from dotenv import load_dotenv
+from azure.storage.blob import BlobServiceClient
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from ...models import (
@@ -13,8 +14,9 @@ from ...models import (
 )
 from .template import *
 
-User = get_user_model()
 
+User = get_user_model()
+load_dotenv()
 
 class Command(BaseCommand):
     help = 'Populate the database with random data'
@@ -36,12 +38,28 @@ class Command(BaseCommand):
 
         confirm = input("Do you want to delete all the uploaded documents in Azure Storage? (y/n): ")
         if confirm.lower() == 'y':
-            Document.objects.all().delete()
+            self.delete_all_documents()
+            # Document.objects.all().delete()
             print("Deleted all Document objects")
         else:
             print("Skipped deleting Document objects")
 
         print("Cleared all tables")
+
+    def delete_all_documents(self):
+        # Initialize the BlobServiceClient
+        blob_service_client = BlobServiceClient.from_connection_string(os.environ.get('AZURE_STORAGE_ACCOUNT_CONNECTION_STRING'))
+        container_name = os.environ.get('AZURE_CONTAINER')
+
+        # List all blobs in the container
+        container_client = blob_service_client.get_container_client(container_name)
+        blobs = container_client.list_blobs()
+
+        # Delete each blob
+        for blob in blobs:
+            blob_client = container_client.get_blob_client(blob)
+            blob_client.delete_blob()
+            print(f"Deleted blob: {blob.name}")
 
     def create_images(self):
         for image_item in image_list:
@@ -98,7 +116,7 @@ class Command(BaseCommand):
                 description=course_item["description"],
                 code=course_item["code"],
                 term=term,
-                type='Public',
+                type='System-enroll',
                 status='Active',
                 group=course_item["group"],
                 image=Image.objects.get(name=course_item["name"])

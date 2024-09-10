@@ -14,7 +14,6 @@ image_list = [
     {"name": "Introduction to Databases", "filename": "intro_to_databases.svg"},
     {"name": "Introduction to Computational Thinking and Programming", "filename": "intro_to_computational_thinking_and_programming.svg"},
     {"name": "Probability & Statistics for Computing", "filename": "probability_and_statistics_for_computing.svg"},
-    {"name": "Multiple Choice", "filename": "multiple_choice.svg"},
     {"name": "First Attempt Badge", "filename": "first_attempt_badge.svg"},
     {"name": "Completionist Badge", "filename": "completionist_badge.svg"},
     {"name": "Expert Badge", "filename": "expert_badge.svg"},
@@ -23,6 +22,7 @@ image_list = [
     {"name": "Private Course", "filename": "private_course.svg"},
     {"name": "Private Quest", "filename": "private_quest.svg"},
     {"name": "Kahoot Quest", "filename": "kahoot.svg"},
+    {"name": "Eduquest MCQ Quest", "filename": "multiple_choice.svg"},
     {"name": "Wooclap Quest", "filename": "wooclap.svg"},
 ]
 
@@ -91,8 +91,12 @@ term_list = [
 
 course_list = [
     {"name": "Probability & Statistics for Computing", "code": "SC2000", "group": "SCED", "description": "This course provides the basic mathematical foundations for probability and statistics which are necessary for anyone pursuing a computing degree course. The course covers the basic concepts of probability and statistics, and their applications in computing."},
+    {"name": "Probability & Statistics for Computing", "code": "SC2000", "group": "SCS3", "description": "This course provides the basic mathematical foundations for probability and statistics which are necessary for anyone pursuing a computing degree course. The course covers the basic concepts of probability and statistics, and their applications in computing."},
+    {"name": "Probability & Statistics for Computing", "code": "SC2000", "group": "SCSH", "description": "This course provides the basic mathematical foundations for probability and statistics which are necessary for anyone pursuing a computing degree course. The course covers the basic concepts of probability and statistics, and their applications in computing."},
+    {"name": "Probability & Statistics for Computing", "code": "SC2000", "group": "SCSI", "description": "This course provides the basic mathematical foundations for probability and statistics which are necessary for anyone pursuing a computing degree course. The course covers the basic concepts of probability and statistics, and their applications in computing."},
+    {"name": "Probability & Statistics for Computing", "code": "SC2000", "group": "SCSJ", "description": "This course provides the basic mathematical foundations for probability and statistics which are necessary for anyone pursuing a computing degree course. The course covers the basic concepts of probability and statistics, and their applications in computing."},
     {"name": "Introduction to Computational Thinking and Programming", "code": "SC1003", "group": "SWLA", "description": "The aim of this course is hence to take students with no prior experience of thinking in a computational manner to a point where you can derive simple algorithms and code the programs to solve some basic problems in your domain of studies. Student will also learn about basic program construct and simple data structures."},
-    {"name": "Introduction to Databases", "code": "SC2207", "group": "SWDB", "description": "Learn about database design, management, and SQL. Understand relational databases, normalization, indexing, and transactions, and gain practical experience with database management systems."}
+    {"name": "Introduction to Databases", "code": "SC2207", "group": "TEL1", "description": "Learn about database design, management, and SQL. Understand relational databases, normalization, indexing, and transactions, and gain practical experience with database management systems."}
 
     # {"name": "Cloud Computing", "code": "SC4052", "description": "Learn about cloud services, deployment models, and cloud architecture. Understand the benefits and challenges of cloud computing, and gain hands-on experience with leading cloud platforms."},
     # {"name": "Introduction to Data Science & Artificial Intelligence", "code": "SC1015", "description": "Explore data analysis, visualization, and machine learning techniques. Gain insights into data manipulation, statistical analysis, and predictive modeling using popular tools and libraries."},
