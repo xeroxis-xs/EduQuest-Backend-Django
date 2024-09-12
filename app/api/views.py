@@ -752,7 +752,8 @@ class AnalyticsPartTwoView(APIView):
             course_quest_completion.append({
                 'course_id': course_id,
                 'course_term': f"AY {user_course.course.term.academic_year.start_year} - {user_course.course.term.academic_year.end_year} {user_course.course.term.name}",
-                'course_name': f"{user_course.course.code} {user_course.course.name}",
+                'course_code': user_course.course.code,
+                'course_name': user_course.course.name,
                 'completed_quests': completed_quests,
                 'total_quests': total_quests,
                 'completion_ratio': completion_ratio,
@@ -802,104 +803,70 @@ class AnalyticsPartThreeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        # Fetch top 5 users with the most badges
-        top_users = UserQuestBadge.objects.values('quest_attempted__user__id', 'quest_attempted__user__nickname') \
-                        .annotate(badge_count=Count('badge')) \
-                        .order_by('-badge_count')[:5]
+        # Fetch top 5 users with the most badges with quest badge and course badge combined
+        # Get all badges awarded to users and count the number of badges
 
-        # Fetch badge details for each user
-        user_badge_details = []
-        for user in top_users:
-            user_id = user['quest_attempted__user__id']
-            quest_badges = UserQuestBadge.objects.filter(quest_attempted__user__id=user_id)
-            course_badges = UserCourseBadge.objects.filter(course_completed__user__id=user_id)
-            quest_badges_serializer = UserQuestBadgeSerializer(quest_badges, many=True)
-            course_badges_serializer = UserCourseBadgeSerializer(course_badges, many=True)
-            total_badge_count = quest_badges.count() + course_badges.count()
-            user_badge_details.append({
-                'user_id': user_id,
-                'nickname': user['quest_attempted__user__nickname'],
-                'badge_count': total_badge_count,
-                'quest_badges': quest_badges_serializer.data,
-                'course_badges': course_badges_serializer.data
-            })
+        top_users = EduquestUser.objects.annotate(
+            badge_count=Count('userquestbadge__badge') + Count('usercoursebadge__badge')
+        ).order_by('-badge_count')[:5]
 
-        # Fetch top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
-        recent_quest_badges = UserQuestBadge.objects.all().order_by('-id')[:5]
-        recent_course_badges = UserCourseBadge.objects.all().order_by('-id')[:5]
+        return Response(top_users)
 
-        # Combine and sort the badges by the most recent award date
-        recent_badges = sorted(
-            list(recent_quest_badges) + list(recent_course_badges),
-            key=lambda badge: badge.awarded_date,
-            reverse=True
-        )[:5]
+        # # Fetch badge details for each user
+        # user_badge_details = []
+        # for user in top_users:
+        #     user_id = user['quest_attempted__user__id']
+        #     quest_badges = UserQuestBadge.objects.filter(quest_attempted__user__id=user_id)
+        #     course_badges = UserCourseBadge.objects.filter(course_completed__user__id=user_id)
+        #     quest_badges_serializer = UserQuestBadgeSerializer(quest_badges, many=True)
+        #     course_badges_serializer = UserCourseBadgeSerializer(course_badges, many=True)
+        #     total_badge_count = quest_badges.count() + course_badges.count()
+        #     user_badge_details.append({
+        #         'user_id': user_id,
+        #         'nickname': user['quest_attempted__user__nickname'],
+        #         'badge_count': total_badge_count,
+        #         'quest_badges': quest_badges_serializer.data,
+        #         'course_badges': course_badges_serializer.data
+        #     })
+        #
+        # # Fetch top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
+        # recent_quest_badges = UserQuestBadge.objects.all().order_by('-id')[:5]
+        # recent_course_badges = UserCourseBadge.objects.all().order_by('-id')[:5]
+        #
+        # # Combine and sort the badges by the most recent award date
+        # recent_badges = sorted(
+        #     list(recent_quest_badges) + list(recent_course_badges),
+        #     key=lambda badge: badge.awarded_date,
+        #     reverse=True
+        # )[:5]
 
-        # Serialize the combined badge data
-        recent_badges_data = []
-        for badge in recent_badges:
-            if isinstance(badge, UserCourseBadge):
-                user_id = badge.course_completed.user.id
-                nickname = badge.course_completed.user.nickname
-                badge_data = UserCourseBadgeSerializer(badge).data
+        # # Serialize the combined badge data
+        # recent_badges_data = []
+        # for badge in recent_badges:
+        #     if isinstance(badge, UserCourseBadge):
+        #         user_id = badge.course_completed.user.id
+        #         nickname = badge.course_completed.user.nickname
+        #         badge_data = UserCourseBadgeSerializer(badge).data
+        #
+        #     else:
+        #         user_id = badge.quest_attempted.user.id
+        #         nickname = badge.quest_attempted.user.nickname
+        #         badge_data = UserQuestBadgeSerializer(badge).data
+        #
+        #     badge_data.update({
+        #         'user_id': user_id,
+        #         'nickname': nickname
+        #     })
+        #     recent_badges_data.append(badge_data)
+        #
+        # # Combine the data
+        # data = {
+        #     'top_users_with_most_badges': user_badge_details,
+        #     'recent_badge_awards': recent_badges_data
+        # }
+        #
+        # return Response(data)
 
-            else:
-                user_id = badge.quest_attempted.user.id
-                nickname = badge.quest_attempted.user.nickname
-                badge_data = UserQuestBadgeSerializer(badge).data
 
-            badge_data.update({
-                'user_id': user_id,
-                'nickname': nickname
-            })
-            recent_badges_data.append(badge_data)
-
-        # Combine the data
-        data = {
-            'top_users_with_most_badges': user_badge_details,
-            'recent_badge_awards': recent_badges_data
-        }
-
-        return Response(data)
-
-
-class AnalyticsPartFourView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        # Get the list of the courses that the user is enrolled in
-        # Get the highest score for each quest attempted in each course
-        # If the user did not attempt any of the quest in the course, return 0
-        user_id = self.kwargs['user_id']
-        user_courses = UserCourse.objects.filter(user=user_id).exclude(course__type='Private')
-        course_quest_scores = []
-        for user_course in user_courses:
-            course = user_course.course
-            course_quests = course.quests.all()
-            quest_scores = []
-            for quest in course_quests:
-                quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest=quest)
-                if quest_attempts.exists():
-                    highest_score = quest_attempts.aggregate(highest_score=Sum('total_score_achieved'))['highest_score']
-                    quest_scores.append({
-                        'quest_id': quest.id,
-                        'quest_name': quest.name,
-                        'max_score': quest.total_max_score(),
-                        'highest_score': highest_score
-                    })
-                else:
-                    quest_scores.append({
-                        'quest_id': quest.id,
-                        'quest_name': quest.name,
-                        'max_score': quest.total_max_score(),
-                        'highest_score': 0
-                    })
-            course_quest_scores.append({
-                'course_id': course.id,
-                'course_code': course.code,
-                'course_name': course.name,
-                'quests': quest_scores
-            })
-        return Response(course_quest_scores)
 
 

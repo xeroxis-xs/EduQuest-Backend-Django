@@ -55,7 +55,7 @@ from .views import (
     AnalyticsPartOneView,
     AnalyticsPartTwoView,
     AnalyticsPartThreeView,
-    AnalyticsPartFourView
+    # AnalyticsPartFourView
 )
 
 urlpatterns = [
@@ -129,5 +129,5 @@ urlpatterns = [
     path("Analytics/part-one/", AnalyticsPartOneView.as_view(), name='Analytics-part-one'),
     path("Analytics/part-two/<int:user_id>/", AnalyticsPartTwoView.as_view(), name='Analytics-part-two'),
     path("Analytics/part-three/", AnalyticsPartThreeView.as_view(), name='Analytics-part-three'),
-    path("Analytics/part-four/<int:user_id>/", AnalyticsPartFourView.as_view(), name='Analytics-part-four'),
+    # path("Analytics/part-four/<int:user_id>/", AnalyticsPartFourView.as_view(), name='Analytics-part-four'),
 ]

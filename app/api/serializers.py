@@ -165,6 +165,17 @@ class CourseSerializer(serializers.ModelSerializer):
             image = Image.objects.get(**image_data)
             instance.image = image
 
+        # If the status is changed from Active to Expired,
+        # Set all active quests in the course to Expired
+        status = validated_data.get('status', None)
+        if instance.status == 'Active' and status == 'Expired':
+            quests = Quest.objects.filter(from_course=instance, status='Active')
+            expired_date = timezone.now()
+            for quest in quests:
+                quest.status = 'Expired'
+                quest.expiration_date = expired_date
+                quest.save()
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
