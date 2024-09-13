@@ -1,7 +1,15 @@
-from django.urls import path, re_path
+from django.urls import path, include
 from .views import (
-    EduquestUserListCreateView,
-    EduquestUserManageView,
+    EduquestUserViewSet,
+    AcademicYearViewSet,
+    TermViewSet,
+    ImageViewSet,
+    CourseViewSet,
+    CourseGroupViewSet,
+    UserCourseGroupEnrollmentViewSet,
+    QuestViewSet,
+    # EduquestUserListCreateView,
+    # EduquestUserManageView,
     ImageListCreateView,
     ImageManageView,
     AcademicYearListCreateView,
@@ -11,10 +19,12 @@ from .views import (
     CourseListCreateView,
     NonPrivateCourseListCreateView,
     CourseManageView,
-    CourseByTermView,
-    CourseByUserView,
-    UserCourseListCreateView,
-    UserCourseManageView,
+    # CourseByTermView,
+    # CourseByUserView,
+    CourseGroupListCreateView,
+    CourseGroupManageView,
+    UserCourseGroupEnrollmentListCreateView,
+    UserCourseGroupEnrollmentManageView,
     QuestImportView,
     QuestListCreateView,
     QuestManageView,
@@ -57,34 +67,49 @@ from .views import (
     AnalyticsPartThreeView,
     # AnalyticsPartFourView
 )
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'eduquest-users', EduquestUserViewSet, basename='eduquest-users')
+router.register(r'images', ImageViewSet, basename='images')
+router.register(r'academic-years', AcademicYearViewSet, basename='academic-years')
+router.register(r'terms', TermViewSet, basename='terms')
+router.register(r'courses', CourseViewSet, basename='courses')
+router.register(r'course-groups', CourseGroupViewSet, basename='course-groups')
+router.register(r'user-course-group-enrollments', UserCourseGroupEnrollmentViewSet, basename='user-course-group-enrollments')
+router.register(r'quests', QuestViewSet, basename='quests')
 
 urlpatterns = [
-    path("EduquestUser/", EduquestUserListCreateView.as_view(), name='EduquestUser-list-create'),
-    path("EduquestUser/<str:email>/", EduquestUserManageView.as_view(), name='EduquestUser-retrieve-update-destroy'),
+    path('', include(router.urls)),
+    # path("EduquestUser/", EduquestUserListCreateView.as_view(), name='EduquestUser-list-create'),
+    # path("EduquestUser/<str:email>/", EduquestUserManageView.as_view(), name='EduquestUser-retrieve-update-destroy'),
 
-    path("Image/", ImageListCreateView.as_view(), name='Image-list-create'),
-    path("Image/<int:pk>/", ImageManageView.as_view(), name='Image-retrieve-update-destroy'),
-
-    path("AcademicYear/", AcademicYearListCreateView.as_view(), name='AcademicYear-list-create'),
-    path("AcademicYear/<int:pk>/", AcademicYearManageView.as_view(), name='AcademicYear-retrieve-update-destroy'),
-    path("Term/", TermListCreateView.as_view(), name='Term-list-create'),
-    path("Term/<int:pk>/", TermManageView.as_view(), name='Term-retrieve-update-destroy'),
-
-    path("Course/", CourseListCreateView.as_view(), name='Course-list-create'),
-    path("Course/non-private/", NonPrivateCourseListCreateView.as_view(), name='Course-non-private-list-create'),
-    path("Course/<int:pk>/", CourseManageView.as_view(), name='Course-retrieve-update-destroy'),
-    path("Course/by-term/<int:term_id>/", CourseByTermView.as_view(), name='Course-by-term'),
-    path("Course/by-user/<int:user_id>/", CourseByUserView.as_view(), name='Course-by-user'),
-
-    path("UserCourse/", UserCourseListCreateView.as_view(), name='UserCourse-list-create'),
-    path("UserCourse/<int:pk>/", UserCourseManageView.as_view(), name='UserCourse-retrieve-update-destroy'),
-
-    path("Quest/", QuestListCreateView.as_view(), name='Quest-list-create'),
-    path("Quest/import/", QuestImportView.as_view(), name='Quest-import'),
-    path("Quest/<int:pk>/", QuestManageView.as_view(), name='Quest-retrieve-update-destroy'),
-    path("Quest/by-course/<int:course_id>/", QuestByCourseView.as_view(), name='Quest-by-course'),
-    path("Quest/private/by-user/<int:user_id>/", PrivateQuestByUserView.as_view(), name='Private-Quest-by-user'),
-    path("Quest/by-enrolled-user/<int:user_id>/", QuestByEnrolledUser.as_view(), name='Quest-by-enrolled-user'),
+    # path("Image/", ImageListCreateView.as_view(), name='Image-list-create'),
+    # path("Image/<int:pk>/", ImageManageView.as_view(), name='Image-retrieve-update-destroy'),
+    #
+    # path("AcademicYear/", AcademicYearListCreateView.as_view(), name='AcademicYear-list-create'),
+    # path("AcademicYear/<int:pk>/", AcademicYearManageView.as_view(), name='AcademicYear-retrieve-update-destroy'),
+    # path("Term/", TermListCreateView.as_view(), name='Term-list-create'),
+    # path("Term/<int:pk>/", TermManageView.as_view(), name='Term-retrieve-update-destroy'),
+    #
+    # path("Course/", CourseListCreateView.as_view(), name='Course-list-create'),
+    # path("Course/non-private/", NonPrivateCourseListCreateView.as_view(), name='Course-non-private-list-create'),
+    # path("Course/<int:pk>/", CourseManageView.as_view(), name='Course-retrieve-update-destroy'),
+    # # path("Course/by-term/<int:term_id>/", CourseByTermView.as_view(), name='Course-by-term'),
+    # # path("Course/by-user/<int:user_id>/", CourseByUserView.as_view(), name='Course-by-user'),
+    #
+    # path("CourseGroup/", CourseGroupListCreateView.as_view(), name='CourseGroup-list-create'),
+    # path("CourseGroup/<int:pk>/", CourseGroupManageView.as_view(), name='CourseGroup-retrieve-update-destroy'),
+    #
+    # path("UserCourseGroupEnrollment/", UserCourseGroupEnrollmentListCreateView.as_view(), name='UserCourseGroupEnrollment-list-create'),
+    # path("UserCourseGroupEnrollment/<int:pk>/", UserCourseGroupEnrollmentManageView.as_view(), name='UserCourseGroupEnrollment-retrieve-update-destroy'),
+    #
+    # path("Quest/", QuestListCreateView.as_view(), name='Quest-list-create'),
+    # path("Quest/import/", QuestImportView.as_view(), name='Quest-import'),
+    # path("Quest/<int:pk>/", QuestManageView.as_view(), name='Quest-retrieve-update-destroy'),
+    # path("Quest/by-course/<int:course_id>/", QuestByCourseView.as_view(), name='Quest-by-course'),
+    # path("Quest/private/by-user/<int:user_id>/", PrivateQuestByUserView.as_view(), name='Private-Quest-by-user'),
+    # path("Quest/by-enrolled-user/<int:user_id>/", QuestByEnrolledUser.as_view(), name='Quest-by-enrolled-user'),
 
     path("Question/", QuestionListCreateView.as_view(), name='Question-list-create'),
     path("Question/<int:pk>/", QuestionManageView.as_view(), name='Question-retrieve-update-destroy'),

@@ -8,6 +8,10 @@ from storages.backends.azure_storage import AzureStorage
 
 
 class EduquestUser(AbstractUser):
+    """
+    Custom User model for EduQuest
+    is_staff: True if user is an instructor
+    """
     nickname = models.CharField(max_length=100, blank=True, null=True, editable=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
@@ -24,8 +28,11 @@ class EduquestUser(AbstractUser):
         super().save(*args, **kwargs)
 
 
-
 class Image(models.Model):
+    """
+    Model to store images for courses, quests, and badges
+    The image files are stored in Next.js public folder
+    """
     name = models.CharField(max_length=100)
     filename = models.CharField(max_length=100)
 
@@ -34,6 +41,10 @@ class Image(models.Model):
 
 
 class AcademicYear(models.Model):
+    """
+    Model to store academic years
+    e.g. AY2021-2022
+    """
     start_year = models.PositiveIntegerField()
     end_year = models.PositiveIntegerField()
 
@@ -42,6 +53,10 @@ class AcademicYear(models.Model):
 
 
 class Term(models.Model):
+    """
+    Model to store terms for each academic year
+    e.g. Term 1, Term 2, Term 3
+    """
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='terms')
     name = models.CharField(max_length=50)
     start_date = models.DateField(null=True, blank=True)
@@ -52,43 +67,79 @@ class Term(models.Model):
 
 
 class Course(models.Model):
+    """
+    Model to store courses for each term
+    e.g. Term 1 - SC1000, SC2000
+    e.g. Term 2 - SC1000
+    e.g. Term 2 - SC2000
+    One course can have many course groups
+    Many coordinators can coordinate many courses
+    e.g. SC1000 coordinators: instructor1, instructor2
+    e.g. SC2000 coordinators: instructor2, instructor3
+    """
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='courses')
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=100, null=True, blank=True)
-    group = models.CharField(max_length=100, null=True, blank=True)
     type = models.CharField(max_length=100)  # System-enroll, Self-enroll, Private
     description = models.TextField()
     status = models.CharField(max_length=100)  # Active, Expired
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
+    coordinators = models.ManyToManyField(EduquestUser, related_name='coordinated_courses')
 
     def __str__(self):
-        return f"{self.term} - {self.code}"
+        return f"Term {self.term.name} - {self.code}"
 
 
-class UserCourse(models.Model):
-    user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='enrolled_courses')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrolled_users')
+class CourseGroup(models.Model):
+    """
+    Model to store course groups for each course
+    This is similar to how course index works in NTU
+    e.g. SC1000 - TEL1, SCS1
+    e.g. SC2000 - TEL2, SCS2
+    """
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='groups')
+    name = models.CharField(max_length=100) # Group name: e.g. TEL1, SWLA, SCSJ
+    session_day = models.CharField(max_length=10, null=True, blank=True)  # e.g. Monday, Tuesday, Wednesday
+    session_time = models.CharField(max_length=100, null=True, blank=True)  # e.g. 10:00 AM - 12:00 PM, 2:30 PM - 4:30 PM
+    instructor = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='instructed_course_groups')
+
+    def __str__(self):
+        return f"Group {self.name} from {self.course.code}"
+
+
+class UserCourseGroupEnrollment(models.Model):
+    """
+    Model to store the user's enrollment in a course group
+    One course group can have many course group enrollment records
+    One enrollment only stores one course group and one student
+    """
+    student = models.ForeignKey(EduquestUser, related_name='enrolled_course_groups', on_delete=models.CASCADE)
+    course_group = models.ForeignKey(CourseGroup, related_name='enrolled_students', on_delete=models.CASCADE)
     enrolled_on = models.DateTimeField(auto_now_add=True)
     completed_on = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.user.id}"
+        return f"{self.user.username} enrolled in {self.course_group.course.code} - {self.course_group.name}"
 
 
 class Quest(models.Model):
-    from_course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quests')
+    """
+    Model to store quests for each course group
+    One course group can have many quests
+    """
+    course_group = models.ForeignKey(CourseGroup, on_delete=models.CASCADE, related_name='quests')
     name = models.CharField(max_length=100)
     description = models.TextField()
     type = models.CharField(max_length=50)  # EduQuest MCQ, Kahoot!, WooClap, Private
     status = models.CharField(max_length=50, default="Active")  # Active, Expired
-    tutorial_date = models.DateTimeField(null=True, blank=True)
+    # tutorial_date = models.DateTimeField(null=True, blank=True)
     expiration_date = models.DateTimeField(null=True, blank=True)
     max_attempts = models.PositiveIntegerField(default=1)
     organiser = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='quests_organised')
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.name} from {self.from_course.code}"
+        return f"{self.name} from {self.from_course_group.course.code} - {self.from_course_group.name}"
 
     # Calculate the total max score for all questions in a quest
     def total_max_score(self):
@@ -194,7 +245,7 @@ class Badge(models.Model):
 class UserCourseBadge(models.Model):
     # user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_courses')
     badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to_course_completion')
-    course_completed = models.ForeignKey(UserCourse, on_delete=models.CASCADE, related_name='earned_course_badges')
+    course_completed = models.ForeignKey(UserCourseGroupEnrollment, on_delete=models.CASCADE, related_name='earned_course_badges')
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

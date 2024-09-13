@@ -5,7 +5,8 @@ from .models import (
     AcademicYear,
     Term,
     Course,
-    UserCourse,
+    CourseGroup,
+    UserCourseGroupEnrollment,
     Quest,
     Question,
     Answer,
@@ -24,7 +25,7 @@ admin.site.register(EduquestUser)
 admin.site.register(AcademicYear)
 admin.site.register(Term)
 admin.site.register(Course)
-admin.site.register(UserCourse)
+admin.site.register(UserCourseGroupEnrollment)
 admin.site.register(Quest)
 admin.site.register(Question)
 admin.site.register(Answer)

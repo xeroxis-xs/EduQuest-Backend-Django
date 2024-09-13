@@ -1,4 +1,6 @@
+from rest_framework import viewsets
 from rest_framework import generics
+from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
@@ -20,7 +22,8 @@ from .models import (
     AcademicYear,
     Term,
     Course,
-    UserCourse,
+    CourseGroup,
+    UserCourseGroupEnrollment,
     Quest,
     Question,
     Answer,
@@ -38,7 +41,8 @@ from .serializers import (
     AcademicYearSerializer,
     TermSerializer,
     CourseSerializer,
-    UserCourseSerializer,
+    CourseGroupSerializer,
+    UserCourseGroupEnrollmentSerializer,
     QuestSerializer,
     QuestionSerializer,
     AnswerSerializer,
@@ -55,22 +59,106 @@ from .serializers import (
 User = get_user_model()
 
 
-class EduquestUserListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
+class EduquestUserViewSet(viewsets.ModelViewSet):
     queryset = EduquestUser.objects.all().order_by('-id')
     serializer_class = EduquestUserSerializer
-
-
-class EduquestUserManageView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = EduquestUser.objects.all().order_by('-id')
-    serializer_class = EduquestUserSerializer
 
-    def get_object(self):
-        email = self.kwargs.get('email')
-        return get_object_or_404(EduquestUser, email=email)
+class AcademicYearViewSet(viewsets.ModelViewSet):
+    queryset = AcademicYear.objects.all().order_by('-id')
+    serializer_class = AcademicYearSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class TermViewSet(viewsets.ModelViewSet):
+    queryset = Term.objects.all().order_by('-id')
+    serializer_class = TermSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class ImageViewSet(viewsets.ModelViewSet):
+    queryset = Image.objects.all().order_by('-id')
+    serializer_class = ImageSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class CourseViewSet(viewsets.ModelViewSet):
+    queryset = Course.objects.all().order_by('-id')
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def non_private(self, request):
+        queryset = Course.objects.exclude(type='Private').order_by('-id')
+        serializer = CourseSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class CourseGroupViewSet(viewsets.ModelViewSet):
+    queryset = CourseGroup.objects.all().order_by('-id')
+    serializer_class = CourseGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
+    queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
+    serializer_class = UserCourseGroupEnrollmentSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class QuestViewSet(viewsets.ModelViewSet):
+    queryset = Quest.objects.all().order_by('-id')
+    serializer_class = QuestSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def private_by_user(self, request):
+        user = request.user
+        queryset = Quest.objects.filter(organiser=user, type='Private').order_by('-id')
+        serializer = QuestSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_enrolled_user(self, request):
+        user_id = request.query_params.get('user_id')
+        # Get all course groups the user is enrolled in by filtering UserCourseGroupEnrollment
+        course_groups = CourseGroup.objects.filter(
+            enrolled_students__students__id=user_id
+        ).distinct()
+
+        # Debugging output
+        print(f"Course Groups for User {user_id}: {course_groups}")
+
+        # Get all quests from those course groups
+        queryset = Quest.objects.filter(course_group__in=course_groups).distinct().order_by('-id')
+
+        serializer = QuestSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_course_group(self, request):
+        course_group_id = request.query_params.get('course_group_id')
+        queryset = Quest.objects.filter(course_group=course_group_id).order_by('-id')
+        serializer = QuestSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+# class EduquestUserListCreateView(generics.ListCreateAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = EduquestUser.objects.all().order_by('-id')
+#     serializer_class = EduquestUserSerializer
+
+
+# class EduquestUserManageView(generics.RetrieveUpdateDestroyAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = EduquestUser.objects.all().order_by('-id')
+#     serializer_class = EduquestUserSerializer
+#
+#     def get_object(self):
+#         email = self.kwargs.get('email')
+#         return get_object_or_404(EduquestUser, email=email)
 
 
 class ImageListCreateView(generics.ListCreateAPIView):
@@ -136,49 +224,63 @@ class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CourseSerializer
 
 
-class CourseByTermView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = CourseSerializer
-
-    def get_queryset(self):
-        term_id = self.kwargs['term_id']
-        return Course.objects.filter(term=term_id).order_by('-id')
-
-
-class CourseByUserView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = CourseSerializer
-
-    def get_queryset(self):
-        user_id = self.kwargs['user_id']
-        return Course.objects.filter(enrolled_users__user=user_id).order_by('-id')
+# class CourseByTermView(generics.ListAPIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = CourseSerializer
+#
+#     def get_queryset(self):
+#         term_id = self.kwargs['term_id']
+#         return Course.objects.filter(term=term_id).order_by('-id')
 
 
-class UserCourseListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserCourse.objects.all().order_by('-id')
-    serializer_class = UserCourseSerializer
-
-    def perform_create(self, serializer):
-        user = self.request.data.get('user')
-        if user and isinstance(user, dict):
-            user_id = user['id']
-            user = EduquestUser.objects.get(id=user_id)
-        course = self.request.data.get('course')
-        if course and isinstance(course, dict):
-            course_id = course['id']
-            course = Course.objects.get(id=course_id)
-        if UserCourse.objects.filter(user=user, course=course).exists():
-            return  # Do nothing if the user is already enrolled in the course
-        serializer.save()
+# class CourseByUserView(generics.ListAPIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = CourseSerializer
+#
+#     def get_queryset(self):
+#         user_id = self.kwargs['user_id']
+#         return Course.objects.filter(enrolled_users__user=user_id).order_by('-id')
 
 
-class UserCourseManageView(generics.RetrieveUpdateDestroyAPIView):
+class CourseGroupListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
-    queryset = UserCourse.objects.all().order_by('-id')
-    serializer_class = UserCourseSerializer
+    queryset = CourseGroup.objects.all().order_by('-id')
+    serializer_class = CourseGroupSerializer
+
+
+class CourseGroupManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = CourseGroup.objects.all().order_by('-id')
+    serializer_class = CourseGroupSerializer
+
+
+class UserCourseGroupEnrollmentListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
+    serializer_class = UserCourseGroupEnrollmentSerializer
+
+    # def perform_create(self, serializer):
+    #     user = self.request.data.get('user')
+    #     if user and isinstance(user, dict):
+    #         user_id = user['id']
+    #         user = EduquestUser.objects.get(id=user_id)
+    #     course = self.request.data.get('course')
+    #     if course and isinstance(course, dict):
+    #         course_id = course['id']
+    #         course = Course.objects.get(id=course_id)
+    #     if UserCourseGroupEnrollmentSerializer.objects.filter(user=user, course=course).exists():
+    #         return  # Do nothing if the user is already enrolled in the course
+    #     serializer.save()
+
+
+class UserCourseGroupEnrollmentManageView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
+    serializer_class = UserCourseGroupEnrollmentSerializer
 
 
 class QuestImportView(APIView):
@@ -251,7 +353,7 @@ class QuestImportView(APIView):
                     }
                 )
                 # Enroll the users in the course if they are not already enrolled
-                UserCourse.objects.get_or_create(
+                UserCourseGroupEnrollment.objects.get_or_create(
                     user=user,
                     course=course
                 )
@@ -663,8 +765,8 @@ class AnalyticsPartOneView(APIView):
         new_users_percentage = (new_users_last_week / total_users) * 100 if total_users > 0 else 0
 
         # 2. Total number of course enrollments and new enrollments since last week
-        total_enrollments = UserCourse.objects.exclude(course__type="Private").count()
-        new_enrollments_last_week = UserCourse.objects.exclude(course__type="Private").filter(
+        total_enrollments = UserCourseGroupEnrollment.objects.exclude(course__type="Private").count()
+        new_enrollments_last_week = UserCourseGroupEnrollment.objects.exclude(course__type="Private").filter(
             enrolled_on__gte=last_week).count()
         new_enrollments_percentage = (new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
 
@@ -723,7 +825,7 @@ class AnalyticsPartTwoView(APIView):
         user_id = self.kwargs['user_id']
 
         # Fetch a user's enrolled course progression, excluding courses with code "PRIVATE"
-        user_courses = UserCourse.objects.filter(user=user_id).exclude(course__name="Private Course")
+        user_courses = UserCourseGroupEnrollment.objects.filter(user=user_id).exclude(course__name="Private Course")
 
         # Aggregate the number of unique completed quests per course
         course_quest_completion = []
@@ -801,71 +903,113 @@ class AnalyticsPartTwoView(APIView):
 
 class AnalyticsPartThreeView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request, *args, **kwargs):
         # Fetch top 5 users with the most badges with quest badge and course badge combined
         # Get all badges awarded to users and count the number of badges
 
         top_users = EduquestUser.objects.annotate(
-            badge_count=Count('userquestbadge__badge') + Count('usercoursebadge__badge')
-        ).order_by('-badge_count')[:5]
+            quest_badge_count=Count('attempted_quests__earned_quest_badges', distinct=True),
+            course_badge_count=Count('enrolled_courses__earned_course_badges', distinct=True),
+        ).annotate(
+            total_badge_count=F('quest_badge_count') + F('course_badge_count')
+        ).order_by('-total_badge_count')[:5]
 
-        return Response(top_users)
+        quest_badges = UserQuestBadge.objects.all().order_by('-id')
+        course_badges = UserCourseBadge.objects.all().order_by('-id')
 
-        # # Fetch badge details for each user
-        # user_badge_details = []
-        # for user in top_users:
-        #     user_id = user['quest_attempted__user__id']
-        #     quest_badges = UserQuestBadge.objects.filter(quest_attempted__user__id=user_id)
-        #     course_badges = UserCourseBadge.objects.filter(course_completed__user__id=user_id)
-        #     quest_badges_serializer = UserQuestBadgeSerializer(quest_badges, many=True)
-        #     course_badges_serializer = UserCourseBadgeSerializer(course_badges, many=True)
-        #     total_badge_count = quest_badges.count() + course_badges.count()
-        #     user_badge_details.append({
-        #         'user_id': user_id,
-        #         'nickname': user['quest_attempted__user__nickname'],
-        #         'badge_count': total_badge_count,
-        #         'quest_badges': quest_badges_serializer.data,
-        #         'course_badges': course_badges_serializer.data
-        #     })
-        #
-        # # Fetch top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
-        # recent_quest_badges = UserQuestBadge.objects.all().order_by('-id')[:5]
-        # recent_course_badges = UserCourseBadge.objects.all().order_by('-id')[:5]
-        #
-        # # Combine and sort the badges by the most recent award date
-        # recent_badges = sorted(
-        #     list(recent_quest_badges) + list(recent_course_badges),
-        #     key=lambda badge: badge.awarded_date,
-        #     reverse=True
-        # )[:5]
+        # Perform operations on top_users
+        user_badge_details = []
+        for user in top_users:
+            # Fetch badges for the user
+            filtered_quest_badges = quest_badges.filter(quest_attempted__user=user)
+            filtered_course_badges = course_badges.filter(course_completed__user=user)
 
-        # # Serialize the combined badge data
-        # recent_badges_data = []
-        # for badge in recent_badges:
-        #     if isinstance(badge, UserCourseBadge):
-        #         user_id = badge.course_completed.user.id
-        #         nickname = badge.course_completed.user.nickname
-        #         badge_data = UserCourseBadgeSerializer(badge).data
-        #
-        #     else:
-        #         user_id = badge.quest_attempted.user.id
-        #         nickname = badge.quest_attempted.user.nickname
-        #         badge_data = UserQuestBadgeSerializer(badge).data
-        #
-        #     badge_data.update({
-        #         'user_id': user_id,
-        #         'nickname': nickname
-        #     })
-        #     recent_badges_data.append(badge_data)
-        #
-        # # Combine the data
-        # data = {
-        #     'top_users_with_most_badges': user_badge_details,
-        #     'recent_badge_awards': recent_badges_data
-        # }
-        #
-        # return Response(data)
+            # Serialize badge data
+            quest_badges_data = [
+                {
+                    'badge_id': badge.badge.id,
+                    'badge_name': badge.badge.name,
+                    'badge_filename': badge.badge.image.filename,
+                    'count': filtered_quest_badges.filter(badge=badge.badge).count()
+                }
+                for badge in filtered_quest_badges
+            ]
+            course_badges_data = [
+                {
+                    'badge_id': badge.badge.id,
+                    'badge_name': badge.badge.name,
+                    'badge_filename': badge.badge.image.filename,
+                    'count': filtered_course_badges.filter(badge=badge.badge).count()
+                }
+                for badge in filtered_course_badges
+            ]
+
+            user_badge = {
+                'user_id': user.id,
+                'nickname': user.nickname,
+                'badge_count': user.total_badge_count,
+                'quest_badges': quest_badges_data,
+                'course_badges': course_badges_data,
+            }
+
+            user_badge_details.append(user_badge)
+
+        # Get top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
+        recent_quest_badges = quest_badges[:5]
+        recent_course_badges = course_badges[:5]
+
+        # Combine and sort the badges by the most recent award date
+        recent_badges = sorted(
+            list(recent_quest_badges) + list(recent_course_badges),
+            key=lambda badge: badge.awarded_date,
+            reverse=True
+        )[:5]
+
+        # Serialize the combined badge data
+        recent_badges_data = []
+        record_id = 0
+        for badge in recent_badges:
+            badge_name = badge.badge.name
+            awarded_date = badge.awarded_date
+            quest_id = None
+            quest_name = None
+            if isinstance(badge, UserCourseBadge):
+                user_id = badge.course_completed.user.id
+                nickname = badge.course_completed.user.nickname
+                course_id = badge.course_completed.course.id
+                course_code = badge.course_completed.course.code
+                course_name = badge.course_completed.course.name
+            else:
+                user_id = badge.quest_attempted.user.id
+                nickname = badge.quest_attempted.user.nickname
+                quest_id = badge.quest_attempted.quest.id
+                quest_name = badge.quest_attempted.quest.name
+                course_id = badge.quest_attempted.quest.from_course.id
+                course_code = badge.quest_attempted.quest.from_course.code
+                course_name = badge.quest_attempted.quest.from_course.name
+
+            badge_data = {
+                'record_id': record_id,
+                'user_id': user_id,
+                'nickname': nickname,
+                'badge_name': badge_name,
+                'awarded_date': awarded_date,
+                'course_id': course_id,
+                'course_code': course_code,
+                'course_name': course_name,
+                'quest_id': quest_id,
+                'quest_name': quest_name,
+            }
+            record_id += 1
+            recent_badges_data.append(badge_data)
+
+        # Combine the data
+        data = {
+            'top_users_with_most_badges': user_badge_details,
+            'recent_badge_awards': recent_badges_data
+        }
+
+        return Response(data)
 
 
 

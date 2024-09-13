@@ -11,13 +11,14 @@ from .models import (
     AcademicYear,
     Term,
     Course,
+    CourseGroup,
+    UserCourseGroupEnrollment,
     Quest,
     Question,
     Answer,
     UserQuestAttempt,
     UserQuestQuestionAttempt,
     AttemptAnswerRecord,
-    UserCourse,
     Badge,
     UserQuestBadge,
     UserCourseBadge,
@@ -41,8 +42,6 @@ class BulkSerializer(serializers.ListSerializer):
 
 
 class EduquestUserSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)  # Ensure id field is included
-
     class Meta:
         model = EduquestUser
         fields = ['id', 'first_name', 'last_name', 'username', 'email', 'nickname', 'last_login',
@@ -71,6 +70,12 @@ class EduquestUserSerializer(serializers.ModelSerializer):
     #     return instance
 
 
+class EduquestUserSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EduquestUser
+        fields = ['id', 'email', 'nickname']
+
+
 class ImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Image
@@ -84,22 +89,25 @@ class AcademicYearSerializer(serializers.ModelSerializer):
 
 
 class TermSerializer(serializers.ModelSerializer):
-    academic_year = AcademicYearSerializer()
+    # Use PrimaryKeyRelatedField for writing operations
+    academic_year_id = serializers.PrimaryKeyRelatedField(
+        queryset=AcademicYear.objects.all(),
+        source='academic_year',  # Maps 'academic_year_id' to the 'academic_year' model field
+        write_only=True
+    )
+    # Use nested serializer for reading operations
+    academic_year = AcademicYearSerializer(read_only=True)
+
     class Meta:
         model = Term
         fields = '__all__'
 
-    def create(self, validated_data):
-        academic_year_data = validated_data.pop('academic_year')
-        academic_year = AcademicYear.objects.get_or_create(**academic_year_data)
-        term = Term.objects.create(academic_year=academic_year, **validated_data)
-        return term
 
     def update(self, instance, validated_data):
-        academic_year_data = validated_data.pop('academic_year')
-        academic_year = AcademicYear.objects.get(**academic_year_data)
-
-        instance.academic_year = academic_year
+        # Handle 'academic_year' update if provided
+        academic_year = validated_data.pop('academic_year', None)
+        if academic_year:
+            instance.academic_year = academic_year
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -109,72 +117,69 @@ class TermSerializer(serializers.ModelSerializer):
 
 
 class CourseSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
-    term = TermSerializer(required=False)
-    image = ImageSerializer(required=False)
-    enrolled_users = serializers.StringRelatedField(many=True, read_only=True)
+    # Use PrimaryKeyRelatedField for writing operations
+    term_id = serializers.PrimaryKeyRelatedField(
+        queryset=Term.objects.all(),
+        source='term',  # Maps 'term_id' to the 'term' model field
+        write_only=True
+    )
+    image_id = serializers.PrimaryKeyRelatedField(
+        queryset=Image.objects.all(),
+        source='image',  # Maps 'image_id' to the 'image' model field
+        write_only=True
+    )
+    coordinators = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),
+        many=True,
+        write_only=True
+    )
+    # Use nested serializer for reading operations
+    term = TermSerializer(read_only=True)
+    image = ImageSerializer(read_only=True)
+    coordinators_summary = EduquestUserSummarySerializer(many=True, read_only=True, source='coordinators')
 
     class Meta:
         model = Course
         fields = '__all__'
-        extra_kwargs = {
-            # Make the field optional during UserCourse create
-            'name': {'required': False},
-            'type': {'required': False},
-            'description': {'required': False},
-            'status': {'required': False},
-        }
 
-    # Course is created with empty enrolled_users
     def create(self, validated_data):
-        term_data = validated_data.pop('term')
-        image_data = validated_data.pop('image')
-        # Remove enrolled_users from validated_data if there is any
-        enrolled_users_data = validated_data.pop('enrolled_users', [])
+        # Extract the coordinators
+        coordinators = validated_data.pop('coordinators', [])
 
-        academic_year_data = term_data.pop('academic_year')
+        # Create the Course instance without setting the coordinators
+        course = Course.objects.create(**validated_data)
 
-        # Retrieve AcademicYear
-        academic_year = AcademicYear.objects.get(**academic_year_data)
-        # Retrieve Term under the AcademicYear
-        term = Term.objects.get(academic_year=academic_year, **term_data)
-        # Retrieve Image
-        image = Image.objects.get(**image_data)
+        # Set the many-to-many relationship separately
+        if coordinators:
+            course.coordinators.set(coordinators)
 
-        course = Course.objects.create(
-            term=term,
-            image=image,
-            **validated_data
-        )
         return course
 
-    # Do not update enrolled_users since it can be updated separately using UserCourseSerializer
     def update(self, instance, validated_data):
-        term_data = validated_data.pop('term', None)
-        image_data = validated_data.pop('image', None)
-        # Remove enrolled_users from validated_data if there
-        enrolled_users_data = validated_data.pop('enrolled_users', [])
-
-        if term_data:
-            # Remove academic_year from term_data
-            academic_year_data = term_data.pop('academic_year')
-            term = Term.objects.get(**term_data)
+        term = validated_data.pop('term', None)
+        if term:
             instance.term = term
 
-        if image_data:
-            image = Image.objects.get(**image_data)
+        image = validated_data.pop('image', None)
+        if image:
             instance.image = image
+
+        # Handle many-to-many relationships
+        coordinators = validated_data.pop('coordinators', None)
+        if coordinators is not None:
+            instance.coordinators.set(coordinators)
 
         # If the status is changed from Active to Expired,
         # Set all active quests in the course to Expired
         status = validated_data.get('status', None)
         if instance.status == 'Active' and status == 'Expired':
-            quests = Quest.objects.filter(from_course=instance, status='Active')
+            quests = Quest.objects.filter(from_course_group__course=instance, status='Active')
             expired_date = timezone.now()
             for quest in quests:
                 quest.status = 'Expired'
                 quest.expiration_date = expired_date
                 quest.save()
+
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -182,45 +187,104 @@ class CourseSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserCourseSerializer(serializers.ModelSerializer):
-    course = CourseSerializer()
-    user = EduquestUserSerializer()
+class CourseSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = ['id', 'name', 'code', 'term', 'status']
+
+
+class CourseGroupSerializer(serializers.ModelSerializer):
+    course_id = serializers.PrimaryKeyRelatedField(
+        queryset=Course.objects.all(),
+        source='course',
+        write_only=True
+    )
+    instructor_id = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),
+        source='instructor',
+        write_only=True
+    )
+    course = CourseSerializer(read_only=True)
+    instructor = EduquestUserSummarySerializer(read_only=True)
 
     class Meta:
-        model = UserCourse
+        model = CourseGroup
         fields = '__all__'
 
-    def create(self, validated_data):
-        course_data = validated_data.pop('course')
-        user_data = validated_data.pop('user')
-        course = Course.objects.get(id=course_data['id'])
-        user = EduquestUser.objects.get(id=user_data['id'])
-        user_course = UserCourse.objects.create(course=course, user=user)
-        return user_course
+    def update(self, instance, validated_data):
+        course = validated_data.pop('course', None)
+        if course:
+            instance.course = course
+
+        instructor = validated_data.pop('instructor', None)
+        if instructor:
+            instance.instructor = instructor
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+class UserCourseGroupEnrollmentSerializer(serializers.ModelSerializer):
+    course_group_id = serializers.PrimaryKeyRelatedField(
+        queryset=CourseGroup.objects.all(),
+        source='course_group',
+        write_only=True
+    )
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),
+        source='student',
+        write_only=True
+    )
+    course_group = CourseGroupSerializer(read_only=True)
+    student = EduquestUserSummarySerializer(read_only=True)
+
+    class Meta:
+        model = UserCourseGroupEnrollment
+        fields = '__all__'
+
+    def update(self, instance, validated_data):
+        course_group = validated_data.pop('course_group', None)
+        if course_group:
+            instance.course_group = course_group
+
+        student = validated_data.pop('student', None)
+        if student:
+            instance.student = student
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class QuestSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
-    from_course = CourseSerializer(required=False)
-    organiser = EduquestUserSerializer(required=False)
-    image = ImageSerializer(required=False)
+    course_group_id = serializers.PrimaryKeyRelatedField(
+        queryset=CourseGroup.objects.all(),
+        source='course_group',
+        write_only=True
+    )
+    organiser_id = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),
+        source='organiser',
+        write_only=True
+    )
+    image_id = serializers.PrimaryKeyRelatedField(
+        queryset=Image.objects.all(),
+        source='image',
+        write_only=True
+    )
+
+    course_group = CourseGroupSerializer(read_only=True)
+    organiser = EduquestUserSummarySerializer(read_only=True)
+    image = ImageSerializer(read_only=True)
     total_max_score = serializers.SerializerMethodField(read_only=True)
     total_questions = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Quest
         fields = '__all__'
-        extra_kwargs = {
-            # Make the field optional during UserQuestAttempt create
-            'name': {'required': False},
-            'description': {'required': False},
-            'type': {'required': False},
-            'status': {'required': False},
-            'expiration_date': {'required': False},
-            'max_attempts': {'required': False},
-            'total_max_score': {'required': False},
-            'total_questions': {'required': False},
-        }
 
     def get_total_max_score(self, obj):
         return obj.total_max_score()
@@ -228,54 +292,17 @@ class QuestSerializer(serializers.ModelSerializer):
     def get_total_questions(self, obj):
         return obj.total_questions()
 
-    def create(self, validated_data):
-        from_course_data = validated_data.pop('from_course', None)
-        from_course = None
-        organiser = None
-        image = None
-        if from_course_data:
-            enrolled_users_data = from_course_data.pop('enrolled_users', [])
-            course_image_data = from_course_data.pop('image', None)
-            term_data = from_course_data.pop('term', None)
-            if term_data:
-                academic_year_data = term_data.pop('academic_year')
-                academic_year = AcademicYear.objects.get(**academic_year_data)
-
-                from_course = Course.objects.get(
-                    term=Term.objects.get(academic_year=academic_year, **term_data),
-                    image=Image.objects.get(**course_image_data),
-                    **from_course_data)
-
-        organiser_data = validated_data.pop('organiser')
-        if organiser_data:
-            organiser = EduquestUser.objects.get(**organiser_data)
-
-        image_data = validated_data.pop('image')
-        if image_data:
-            image = Image.objects.get(**image_data)
-
-        # Create the Quest instance with the retrieved Course and EduquestUser
-        if from_course and organiser and image:
-            quest = Quest.objects.create(
-                from_course=from_course,
-                organiser=organiser,
-                image=image,
-                **validated_data
-            )
-            return quest
-
     def update(self, instance, validated_data):
-        from_course_data = validated_data.pop('from_course', None)
-        if from_course_data:
-            enrolled_users_data = from_course_data.pop('enrolled_users', [])
-            course_image_data = from_course_data.pop('image')
-            term_data = from_course_data.pop('term')
-            from_course = Course.objects.get(**from_course_data)
-            instance.from_course = from_course
+        course_group = validated_data.pop('course_group', None)
+        if course_group:
+            instance.course_group = course_group
 
-        image_data = validated_data.pop('image', None)
-        if image_data:
-            image = Image.objects.get(**image_data)
+        organiser = validated_data.pop('organiser', None)
+        if organiser:
+            instance.organiser = organiser
+
+        image = validated_data.pop('image', None)
+        if image:
             instance.image = image
 
         # If the status is changed from Active to Expired,
@@ -288,7 +315,6 @@ class QuestSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
-
 
 
 class AnswerSerializer(serializers.ModelSerializer):
@@ -525,7 +551,7 @@ class UserQuestBadgeSerializer(serializers.ModelSerializer):
 
 class UserCourseBadgeSerializer(serializers.ModelSerializer):
     badge = BadgeSerializer()
-    course_completed = UserCourseSerializer()
+    course_completed = UserCourseGroupEnrollmentSerializer()
     class Meta:
         model = UserCourseBadge
         fields = '__all__'
