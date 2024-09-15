@@ -3,9 +3,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.text import slugify
 from .utils import split_full_name
-from django.db.models import Sum, Max, F, Subquery, OuterRef
+from django.db.models import Sum
 from storages.backends.azure_storage import AzureStorage
-
 
 class EduquestUser(AbstractUser):
     """
@@ -22,10 +21,17 @@ class EduquestUser(AbstractUser):
         return f"{self.id}"
 
     def save(self, *args, **kwargs):
-        if not self.pk:  # Only set default nickname on initial creation
+        is_new = self.pk is None
+        if is_new:
             self.nickname = self.username.replace("#", "")
             self.first_name, self.last_name = split_full_name(self.nickname)
         super().save(*args, **kwargs)
+        if is_new and not self.is_superuser:
+            # Enroll the user in the private course group
+            from .models import CourseGroup, UserCourseGroupEnrollment
+            private_course_group = CourseGroup.objects.get(name="Private Course Group")
+            UserCourseGroupEnrollment.objects.create(student=self, course_group=private_course_group)
+            print(f"[Enroll Private Course Group] User: {self.username} has been enrolled in the Private course group")
 
 
 class Image(models.Model):
@@ -86,6 +92,9 @@ class Course(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
     coordinators = models.ManyToManyField(EduquestUser, related_name='coordinated_courses')
 
+    def total_students_enrolled(self):
+        return UserCourseGroupEnrollment.objects.filter(course_group__course=self).count()
+
     def __str__(self):
         return f"Term {self.term.name} - {self.code}"
 
@@ -102,6 +111,8 @@ class CourseGroup(models.Model):
     session_day = models.CharField(max_length=10, null=True, blank=True)  # e.g. Monday, Tuesday, Wednesday
     session_time = models.CharField(max_length=100, null=True, blank=True)  # e.g. 10:00 AM - 12:00 PM, 2:30 PM - 4:30 PM
     instructor = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='instructed_course_groups')
+
+
 
     def __str__(self):
         return f"Group {self.name} from {self.course.code}"
@@ -121,6 +132,20 @@ class UserCourseGroupEnrollment(models.Model):
     def __str__(self):
         return f"{self.user.username} enrolled in {self.course_group.course.code} - {self.course_group.name}"
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        previous_completed_on = None
+        if not is_new:
+            previous = UserCourseGroupEnrollment.objects.get(pk=self.pk)
+            previous_completed_on = previous.completed_on
+
+        super(UserCourseGroupEnrollment, self).save(*args, **kwargs)
+
+        if (is_new and self.completed_on) or (previous_completed_on is None and self.completed_on is not None):
+            # Import task locally to avoid circular imports
+            from .tasks import award_completionist_badge
+            # Trigger the task
+            award_completionist_badge.delay(self.id)
 
 class Quest(models.Model):
     """
@@ -139,7 +164,7 @@ class Quest(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.name} from {self.from_course_group.course.code} - {self.from_course_group.name}"
+        return f"{self.name} from Group {self.course_group.course.name} {self.course_group.course.code}"
 
     # Calculate the total max score for all questions in a quest
     def total_max_score(self):
@@ -149,89 +174,155 @@ class Quest(models.Model):
     def total_questions(self):
         return self.questions.count()
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        previous_status = None
+        if not is_new:
+            previous = Quest.objects.get(pk=self.pk)
+            previous_status = previous.status
+
+        super(Quest, self).save(*args, **kwargs)
+
+        if (is_new and self.status == "Expired") or (previous_status != "Expired" and self.status == "Expired"):
+            from .tasks import award_speedster_badge, award_expert_badge
+            award_expert_badge.delay(self.id)
+            award_speedster_badge.delay(self.id)
+
 
 class Question(models.Model):
-    from_quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='questions')
+    """
+    Model to store questions for each quest
+    One quest can have many questions
+    """
+    quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField()
     number = models.PositiveIntegerField()
     max_score = models.FloatField(default=1)
 
     def __str__(self):
-        return f"{self.text} from quest {self.from_quest}"
+        return f"{self.number} from Quest ID {self.quest.id}"
 
 
 class Answer(models.Model):
+    """
+    Model to store answer options for each question
+    """
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
     text = models.TextField()
     is_correct = models.BooleanField(default=False)
-    reason = models.TextField(blank=True, null=True)
+    reason = models.TextField(blank=True, null=True)  # Explanation for the correct answer, only for generated quest
 
     def __str__(self):
         return f"{self.text} for Question ID {self.question.id}"
 
 
+
 class UserQuestAttempt(models.Model):
     """
-    This model is used to record the user's attempt for each quest
-    If there is no quest attempt, the user will not have a record in this model
+    Model to store the user's attempt for each quest
+    When the user starts a quest attempt, a record will be created
     """
-    user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='attempted_quests')
+    student = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='attempted_quests')
     quest = models.ForeignKey(Quest, on_delete=models.CASCADE, related_name='attempted_by')
-    # When the user first attempted the quest, automatically populate the date and time
-    all_questions_submitted = models.BooleanField(default=False)
-    first_attempted_on = models.DateTimeField(blank=True, null=True)
-    last_attempted_on = models.DateTimeField(blank=True, null=True)
+    submitted = models.BooleanField(default=False)
+    first_attempted_date = models.DateTimeField(blank=True, null=True)  # blank for imported quests
+    last_attempted_date = models.DateTimeField(blank=True, null=True)  # blank for imported quests
     total_score_achieved = models.FloatField(default=0)
 
     def __str__(self):
-        return f"{self.id} {self.user.username} - {self.quest.name} - First attempt on {self.first_attempted_on}"
+        return f"{self.user.username} attempted {self.quest.name}"
 
-    # Calculate the total score achieved by the user for all questions in a quest
     def calculate_total_score_achieved(self):
-        return self.question_attempts.aggregate(total_score_achieved=Sum('score_achieved'))['total_score_achieved'] or 0
+        """
+        Calculate the total score achieved by the user for the quest
+        Set the score_achieved for each answer attempt
+        """
+        total_score = 0
+        user_answer_attempts_to_update = []
+        questions = self.quest.questions.all()
+        for question in questions:
+            answers = question.answers.all()
+            num_options = answers.count()
+            if num_options == 0:
+                continue  # Avoid division by zero
+            weight_per_option = question.max_score / num_options
 
+            # Get user's answer attempts for this question
+            user_answers = self.answer_attempts.filter(question=question)
+
+            question_score = 0
+            for ua in user_answers:
+                is_correct = ua.answer.is_correct
+                is_selected = ua.is_selected
+                if is_selected == is_correct:
+                    ua.score_achieved = weight_per_option
+                    question_score += weight_per_option
+                else:
+                    ua.score_achieved = 0
+                # Collect instances to update later
+                user_answer_attempts_to_update.append(ua)
+
+            total_score += question_score
+
+        # Bulk update the score_achieved field for all UserAnswerAttempt instances
+        UserAnswerAttempt.objects.bulk_update(user_answer_attempts_to_update, ['score_achieved'])
+
+        return total_score
+
+    @property
     def time_taken(self):
-        if not self.first_attempted_on or not self.last_attempted_on:
+        if not self.first_attempted_date or not self.last_attempted_date:
             return 0
-        # Calculate the total time taken by subtracting the first_attempted_on from the last_attempted_on
-        time_difference = self.last_attempted_on - self.first_attempted_on
-        # If negative return 0
+        # Calculate the total time taken by subtracting the first_attempted_date from the last_attempted_date
+        time_difference = self.last_attempted_date - self.first_attempted_date
+        # If negative, return 0
         if time_difference.total_seconds() < 0:
             return 0
-        return time_difference.total_seconds() * 1000  # Convert to milliseconds
+        return int(time_difference.total_seconds() * 1000)  # Convert to milliseconds
+
+    def save(self, *args, **kwargs):
+        is_new_instance = self.pk is None
+        old_submitted_value = None
+        if not is_new_instance:
+            old_instance = UserQuestAttempt.objects.get(pk=self.pk)
+            old_submitted_value = old_instance.submitted
+
+        super(UserQuestAttempt, self).save(*args, **kwargs)
+
+        # After saving the instance, check if 'submitted' changed from False to True
+        if (is_new_instance and self.submitted) or (old_submitted_value == False and self.submitted == True):
+            # Import tasks locally to avoid circular import
+            from .tasks import (award_perfectionist_badge, award_first_attempt_badge,
+                                check_course_completion_and_update_enrollment,
+                                update_user_quest_attempt_score_and_points_task)
+            # Trigger all tasks
+            award_perfectionist_badge.delay(self.id)
+            award_first_attempt_badge.delay(self.id)
+            check_course_completion_and_update_enrollment.delay(self.id)
+            update_user_quest_attempt_score_and_points_task.delay(self.id)
 
 
-class UserQuestQuestionAttempt(models.Model):
+class UserAnswerAttempt(models.Model):
     """
-    This model is used to record the user's attempt for each question in a quest
-    This model will always be created for every question in a quest
+    Model to store the user's selected answer options for each question attempt
     """
-    user_quest_attempt = models.ForeignKey(UserQuestAttempt, on_delete=models.CASCADE, related_name='question_attempts')
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='attempts')
-    submitted = models.BooleanField(default=False)
-    # The score_achieved will be calculated after user submission
-    score_achieved = models.FloatField(default=0)
-    # time_taken = models.PositiveIntegerField()  # in milliseconds
-    # attempted_on = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user_quest_attempt.user.username} - {self.question.text} - score: {self.score_achieved}"
-
-
-class AttemptAnswerRecord(models.Model):
-    """
-    This model is used to record the answers selected by the user for each question attempt
-    """
-    user_quest_question_attempt = models.ForeignKey(UserQuestQuestionAttempt, on_delete=models.CASCADE, related_name='selected_answers')
-    answer = models.ForeignKey(Answer, on_delete=models.CASCADE, related_name='user_attempts')
+    user_quest_attempt = models.ForeignKey(UserQuestAttempt, on_delete=models.CASCADE, related_name='answer_attempts')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='user_answer_attempts')
+    answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
     is_selected = models.BooleanField(default=False)
-
+    score_achieved = models.FloatField(default=0)
 
     def __str__(self):
-        return f"{self.user_quest_question_attempt.user_quest_attempt.user.username} - {self.answer.text}"
+        return f"{self.user_quest_attempt.student.username} selected {self.answer.text} for question {self.question.number}"
+
+    def __str__(self):
+        return f"{self.user_quest_question_attempt.user_quest_attempt.user.username}'s selection for {self.answer.text}"
 
 
 class Badge(models.Model):
+    """
+    Model to store badges that can be earned by users
+    """
     name = models.CharField(max_length=50)
     description = models.TextField()
     type = models.CharField(max_length=50)  # Course Type or Quest Type
@@ -243,26 +334,45 @@ class Badge(models.Model):
 
 
 class UserCourseBadge(models.Model):
-    # user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_courses')
-    badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to_course_completion')
-    course_completed = models.ForeignKey(UserCourseGroupEnrollment, on_delete=models.CASCADE, related_name='earned_course_badges')
+    """
+    Model to store the user's earned badges from completing courses
+    These badges are awarded based on 'course' related conditions
+    """
+    badge = models.ForeignKey(
+        Badge,
+        on_delete=models.CASCADE,
+        related_name='awarded_to_course_completion'
+    )
+    user_course_group_enrollment = models.ForeignKey(
+        UserCourseGroupEnrollment,
+        on_delete=models.CASCADE,
+        related_name='earned_course_badges'
+    )
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Earned {self.badge} from completing Course {self.course_completed} "
+        return (f"{self.user_course_group_enrollment.user.username} earned {self.badge.name} from Course "
+                f"{self.user_course_group_enrollment.course_group.course.code}")
 
 
 class UserQuestBadge(models.Model):
-    # user = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='badges_earned_from_quests')
+    """
+    Model to store the user's earned badges from attempting quests
+    These badges are awarded based on 'quest' related conditions
+    """
     badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to_quest_attempt')
     quest_attempted = models.ForeignKey(UserQuestAttempt, on_delete=models.CASCADE, related_name='earned_quest_badges')
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Earned {self.badge} from attempting Quest {self.quest_attempted}"
+        return (f"{self.quest_attempted.user.username} earned {self.badge.name} from Quest "
+                f"{self.quest_attempted.quest.name}")
 
 
 class Document(models.Model):
+    """
+    Model to store documents and their records uploaded by users
+    """
     name = models.CharField(max_length=255)
     file = models.FileField(upload_to='documents/')
     size = models.FloatField()

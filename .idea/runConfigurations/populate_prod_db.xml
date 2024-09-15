@@ -9,7 +9,7 @@
     </envs>
     <option name="SDK_HOME" value="" />
     <option name="SDK_NAME" value="Python 3.10 (EduQuest-Backend-Django)" />
-    <option name="WORKING_DIRECTORY" value="$ProjectFileDir$\app" />
+    <option name="WORKING_DIRECTORY" value="$ProjectFileDir$/app" />
     <option name="IS_MODULE_SDK" value="false" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />

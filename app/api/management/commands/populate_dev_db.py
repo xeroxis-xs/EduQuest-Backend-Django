@@ -164,7 +164,7 @@ class Command(BaseCommand):
                             quest=quest,
                             first_attempted_on=first_attempted_on,
                             last_attempted_on=last_attempted_on,
-                            all_questions_submitted=False
+                            submitted=False
                         )
                         # For each user quest attempt, randomly attempt some questions
                         for question in Question.objects.filter(from_quest=user_quest_attempt.quest):

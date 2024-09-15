@@ -82,9 +82,9 @@ class Excel():
         print("Getting Users: Completed! \n")
         return self.user_list
 
-    def get_user_question_attempts(self, email):
-        print(f"Getting Question Attempts: {email}...")
-        user_question_attempt_list = []
+    def get_user_answer_attempts(self, email):
+        print(f"Getting Answer Attempts: {email}...")
+        user_answer_attempt_list = []
         i = 0
 
         # Create a list of indices for columns that are MCQ
@@ -92,14 +92,14 @@ class Excel():
             idx for idx in range(5, len(self.main_results_sheet.columns) - 1)
             if idx - 5 < len(self.question_type_mapping_list) and self.question_type_mapping_list[idx - 5]['is_mcq']
         ]
-        print(f"Getting Question Attempts: MCQ Indices (Columns): {mcq_indices}")
+        print(f"Getting Answer Attempts: MCQ Indices (Columns): {mcq_indices}")
 
         try:
             # Scan each row in main result sheet
             while not pd.isnull(self.main_results_sheet.iloc[i, 0]):
                 # If the email matches
                 if self.main_results_sheet.iloc[i, 4].upper() == email.upper():
-                    print(f"Getting Question Attempts: Found {email}")
+                    print(f"Getting Answer Attempts: Found {email}")
 
                     # Iterate through each MCQ question to the end of the columns
                     for j in mcq_indices:
@@ -109,11 +109,11 @@ class Excel():
                         # Check if the first character is '/'
                         if wooclap_selected_answer_string[0] == '/':
                             # User did not attempt the question
-                            print(f"Getting Question Attempts: {email} did not attempt question {j - 5 + 1}")
+                            print(f"Getting Answer Attempts: {email} did not attempt question {j - 5 + 1}")
                         else:
                             # Get characters after the first 4 characters
                             wooclap_selected_answer_string = wooclap_selected_answer_string[4:]
-                            print(f"Getting Question Attempts: {email} attempted question {j - 5 + 1}, options "
+                            print(f"Getting Answer Attempts: {email} attempted question {j - 5 + 1}, options "
                                   f"selected: {wooclap_selected_answer_string}")
 
                         # Ensure the question index is within bounds
@@ -125,15 +125,15 @@ class Excel():
                             ]
                             # Log selected answers
                             for answer in user_question_attempt['selected_answers']:
-                                print(f"Getting Question Attempts: {email} selected answer: {answer}")
-                            user_question_attempt_list.append(user_question_attempt)
+                                print(f"Getting Answer Attempts: {email} selected answer: {answer}")
+                            user_answer_attempt_list.append(user_question_attempt)
 
                         else:
-                            print(f"Getting Question Attempts: Question index {j - 5 + 1} out of bounds")
+                            print(f"Getting Answer Attempts: Question index {j - 5 + 1} out of bounds")
                 i += 1
         except Exception as e:
-            print(f"Getting Question Attempts: Error getting {email} question attempts: {str(e)}")
+            print(f"Getting Answer Attempts: Error getting {email} Answer Attempts: {str(e)}")
 
 
-        print(f"Getting {email} Question Attempts...Complete!\n")
-        return user_question_attempt_list
+        print(f"Getting {email} Answer Attempts...Complete!\n")
+        return user_answer_attempt_list

@@ -3,8 +3,7 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 
-
-# set the default Django settings module for the 'celery' program.
+# Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 app = Celery('core')
@@ -15,15 +14,19 @@ app = Celery('core')
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
+# Set the timezone
 app.conf.timezone = 'Asia/Singapore'
 
+# Add the new setting to handle broker connection retries on startup
+app.conf.broker_connection_retry_on_startup = True
+
+# Configure Celery beat schedule
 app.conf.beat_schedule = {
     'check-expired-dates-every-midnight': {
         'task': 'api.tasks.check_expired_quest',
         'schedule': crontab(minute=0, hour=0),
     },
 }
-
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()

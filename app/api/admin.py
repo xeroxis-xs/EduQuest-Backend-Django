@@ -5,14 +5,12 @@ from .models import (
     AcademicYear,
     Term,
     Course,
-    CourseGroup,
     UserCourseGroupEnrollment,
     Quest,
     Question,
     Answer,
     UserQuestAttempt,
-    UserQuestQuestionAttempt,
-    AttemptAnswerRecord,
+    UserAnswerAttempt,
     Badge,
     UserQuestBadge,
     UserCourseBadge,
@@ -29,9 +27,8 @@ admin.site.register(UserCourseGroupEnrollment)
 admin.site.register(Quest)
 admin.site.register(Question)
 admin.site.register(Answer)
-admin.site.register(AttemptAnswerRecord)
+admin.site.register(UserAnswerAttempt)
 admin.site.register(UserQuestAttempt)
-admin.site.register(UserQuestQuestionAttempt)
 admin.site.register(Badge)
 admin.site.register(UserQuestBadge)
 admin.site.register(UserCourseBadge)

@@ -11,38 +11,44 @@ from ...models import (
     AcademicYear,
     Term,
     Badge,
-    Document, Quest, UserCourseGroupEnrollment,
+    Document,
+    Quest,
+    UserCourseGroupEnrollment,
+    Question,
+    Answer,
+    UserQuestAttempt,
+    UserAnswerAttempt,
 )
 from .template import *
 from faker import Faker
 import random
 
-
-
 User = get_user_model()
 fake = Faker()
 load_dotenv()
 
+
 class Command(BaseCommand):
     help = 'Populate the database with random data'
     instructor = None
+    admin = None
+    student = None
 
     def handle(self, *args, **kwargs):
         self.clear_db()
-        self.instructor = self.create_staff()
+        self.admin = self.get_admin()
         self.create_images()
         self.create_badges()
         self.create_academic_years_terms()
         self.create_courses()
+        self.create_private_course_group()
+        self.student = self.create_student()
+        self.instructor = self.create_staff()
         self.create_course_groups()
         self.create_fake_data()
 
-
     def clear_db(self):
-        eduquestUsers = EduquestUser.objects.exclude(email__in=[
-            'CHINANN.ONG@STAFF.MAIN.NTU.EDU.SG',
-            'C210101@E.NTU.EDU.SG'
-        ])
+        eduquestUsers = EduquestUser.objects.exclude(is_superuser=True)
         eduquestUsers.delete()
         Image.objects.all().delete()
         AcademicYear.objects.all().delete()
@@ -59,24 +65,53 @@ class Command(BaseCommand):
         print("Cleared all tables")
 
     def create_staff(self):
-        instructor = EduquestUser.objects.get_or_create(
-            email='CHINANN.ONG@STAFF.MAIN.NTU.EDU.SG',
-            username='Ong Chin Ann',
-            first_name='Chin Ann',
-            last_name='Ong',
-            nickname='Ong Chin Ann',
-            is_active=True,
-            is_staff=True,
-            is_superuser=True
-        )
-        return instructor
+        try:
+            instructor, created = EduquestUser.objects.get_or_create(
+                email='CHINANN.ONG@STAFF.MAIN.NTU.EDU.SG',
+                defaults={
+                    'email': 'CHINANN.ONG@STAFF.MAIN.NTU.EDU.SG',
+                    'username': 'Ong Chin Ann',
+                    'nickname': 'Ong Chin Ann',
+                    'first_name': 'Chin Ann',
+                    'last_name': 'Ong',
+                    'is_staff': True,
+                }
+            )
+            return instructor
+        except Exception as e:
+            print(f"Failed to create staff: {str(e)}")
+
+    def create_student(self):
+        try:
+            student, created = EduquestUser.objects.get_or_create(
+                email='C210101@E.NTU.EDU.SG',
+                defaults={
+                    'email': 'C210101@E.NTU.EDU.SG',
+                    'username': '#TEOH XI SHENG#',
+                    'nickname': 'TEOH XI SHENG',
+                    'first_name': 'XI SHENG',
+                    'last_name': 'TEOH',
+                    'is_staff': True,
+                }
+            )
+            return student
+        except Exception as e:
+            print(f"Failed to create student: {str(e)}")
+
+    def get_admin(self):
+        try:
+            admin = EduquestUser.objects.get(id=1)
+            return admin
+        except Exception as e:
+            print(f"Failed to get admin: {str(e)}")
 
     def delete_all_documents(self):
         # Delete all Document objects
         Document.objects.all().delete()
 
         # Initialize the BlobServiceClient
-        blob_service_client = BlobServiceClient.from_connection_string(os.environ.get('AZURE_STORAGE_ACCOUNT_CONNECTION_STRING'))
+        blob_service_client = BlobServiceClient.from_connection_string(
+            os.environ.get('AZURE_STORAGE_ACCOUNT_CONNECTION_STRING'))
         container_name = os.environ.get('AZURE_CONTAINER')
 
         # List all blobs in the container
@@ -138,7 +173,6 @@ class Command(BaseCommand):
     def create_courses(self):
         # Get semester 1
         term = Term.objects.get(name="Semester 1")
-        coordinator = EduquestUser.objects.get(username="admin")
         for course_item in course_list:
             course = Course.objects.create(
                 name=course_item["name"],
@@ -149,8 +183,34 @@ class Command(BaseCommand):
                 status='Active',
                 image=Image.objects.get(name=course_item["name"])
             )
-            course.coordinators.set([coordinator])
+            course.coordinators.set([self.admin])
             print(f"Created course: {course.name}")
+
+        # Create a private course
+        term = Term.objects.get(name="Private Term")
+        course = Course.objects.create(
+            name="Private Course",
+            description="This is a private course created for all students to generate their "
+                        "own quests and questions.",
+            code="PRIVATE",
+            term=term,
+            type='Private',
+            status='Active',
+            image=Image.objects.get(name="Private Course")
+        )
+        course.coordinators.set([self.admin])
+        print(f"Created a private course: {course.name}")
+
+    def create_private_course_group(self):
+        course = Course.objects.get(name="Private Course")
+        course_group = CourseGroup.objects.create(
+            name="Private Course Group",
+            session_day="",
+            session_time="",
+            instructor=self.admin,
+            course=course
+        )
+        print(f"Created a private course group: {course_group.name}")
 
     def create_course_groups(self):
         # Get all courses
@@ -167,13 +227,17 @@ class Command(BaseCommand):
                     )
                     print(f"Created course group: {course_group_group['name']}")
 
-
     def create_fake_data(self):
         confirm = input("Do you want to use faker to populate the rest of the database with fake data? (y/n): ")
         if confirm.lower() == 'y':
             print("Creating fake data...")
             self.create_fake_students()
+            self.create_fake_user_course_group_enrollments()
             self.create_fake_quests()
+            self.create_fake_questions()
+            self.create_fake_answers()
+            self.create_fake_user_quest_attempts()
+            self.create_fake_user_answer_attempts()
             print("Finished creating all fake data")
 
     def create_fake_students(self):
@@ -189,6 +253,20 @@ class Command(BaseCommand):
             )
         print(f"Finished creating all fake students")
 
+    def create_fake_user_course_group_enrollments(self):
+        # Get all students
+        student_list = EduquestUser.objects.filter(is_superuser=False)
+        # Get all course groups
+        course_group_list = CourseGroup.objects.all()
+        for student in student_list:
+            for course_group in course_group_list:
+                if random.choice([True, False]):
+                    UserCourseGroupEnrollment.objects.create(
+                        student=student,
+                        course_group=course_group
+                    )
+            print(f"Finished creating all fake user course group enrollments for student: {student.username}")
+
     def create_fake_quests(self):
         # Get all course groups
         course_group_list = CourseGroup.objects.all()
@@ -197,7 +275,7 @@ class Command(BaseCommand):
             for i in range(random.randint(0, 2)):
                 Quest.objects.create(
                     course_group=course_group,
-                    name=f"Quest {i+1}",
+                    name=f"Quest {i + 1}",
                     description=fake.text(),
                     type='Eduquest MCQ',
                     status='Active',
@@ -206,16 +284,74 @@ class Command(BaseCommand):
                 )
             print(f"Finished creating all fake quests for course group: {course_group.name}")
 
-    # def create_fake_user_course_group_enrollments(self):
-    #     # Get all students
-    #     student_list = EduquestUser.objects.filter(is_superuser=False)
-    #     # Get all course groups
-    #     course_group_list = CourseGroup.objects.all()
-    #     for student in student_list:
-    #         for course_group in course_group_list:
-    #             if random.choice([True, False]):
-    #                 enrollment, created = UserCourseGroupEnrollment.objects.get_or_create(
-    #                     course_group=course_group
-    #                 )
-    #                 enrollment.students.add(student)
-    #                 print(f"Enrolled student: {student.username} into course group: {course_group.name}")
+    def create_fake_questions(self):
+        # Get all quests
+        quest_list = Quest.objects.all()
+        for quest in quest_list:
+            # Some quest may not have any questions created yet
+            for i in range(random.randint(0, 3)):
+                Question.objects.create(
+                    quest=quest,
+                    text=fake.sentence(nb_words=10),
+                    number=i + 1,
+                    max_score=random.randint(1, 5)
+                )
+            print(f"Finished creating all fake questions for quest: {quest.name}")
+
+    def create_fake_answers(self):
+        # Get all questions
+        question_list = Question.objects.all()
+        for question in question_list:
+            for i in range(random.randint(2, 4)):
+                Answer.objects.create(
+                    question=question,
+                    text=fake.sentence(nb_words=3),
+                    is_correct=random.choice([True, False])
+                )
+            print(f"Finished creating all fake answers for question: {question.text}")
+
+    def create_fake_user_quest_attempts(self):
+        # Get all students
+        student_list = EduquestUser.objects.filter(is_superuser=False)
+        # Get all quests
+        quest_list = Quest.objects.all()
+        for student in student_list:
+            for quest in quest_list:
+                UserQuestAttempt.objects.create(
+                    student=student,
+                    quest=quest,
+                    first_attempted_date=timezone.make_aware(
+                        fake.date_time_this_month(before_now=True, after_now=False)
+                    ),
+                )
+            print(f"Finished creating all fake user quest attempts for student: {student.username}")
+
+    def create_fake_user_answer_attempts(self):
+        # Get all user quest attempts
+        user_quest_attempt_list = UserQuestAttempt.objects.all()
+        for user_quest_attempt in user_quest_attempt_list:
+            user_answer_attempts = []
+            # Get all questions for the quest
+            question_list = Question.objects.filter(quest=user_quest_attempt.quest)
+            for question in question_list:
+                # Get all answers for the question
+                answer_list = Answer.objects.filter(question=question)
+                for answer in answer_list:
+                    # Create the UserAnswerAttempt instance for each answer
+                    user_answer_attempts.append(UserAnswerAttempt(
+                        user_quest_attempt=user_quest_attempt,
+                        question=question,
+                        answer=answer,
+                        is_selected=random.choice([True, False]),
+                        # score_achieved can be ignored or set to default
+                    ))
+            # Bulk create all UserAnswerAttempt instances
+            UserAnswerAttempt.objects.bulk_create(user_answer_attempts)
+
+            # Since we're ignoring score calculation, we don't need to update total_score_achieved
+            # Optionally, set total_score_achieved to 0 if needed
+            user_quest_attempt.total_score_achieved = 0
+            user_quest_attempt.save()
+
+            print(f"Finished creating all user answer attempts with is_selected=False "
+                  f"for user quest attempt: {user_quest_attempt.id}")

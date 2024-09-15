@@ -3,8 +3,6 @@ from .utils import split_full_name
 from collections import OrderedDict
 from django.utils import timezone
 from datetime import datetime
-from django.db import transaction
-# from django.contrib.auth.models import User
 from .models import (
     EduquestUser,
     Image,
@@ -17,8 +15,7 @@ from .models import (
     Question,
     Answer,
     UserQuestAttempt,
-    UserQuestQuestionAttempt,
-    AttemptAnswerRecord,
+    UserAnswerAttempt,
     Badge,
     UserQuestBadge,
     UserCourseBadge,
@@ -61,13 +58,6 @@ class EduquestUserSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return user
-
-    # def update(self, instance, validated_data):
-    #     first_name, last_name = split_full_name(validated_data.pop('nickname'))
-    #     instance.first_name = first_name
-    #     instance.last_name = last_name
-    #     instance.save()
-    #     return instance
 
 
 class EduquestUserSummarySerializer(serializers.ModelSerializer):
@@ -137,10 +127,14 @@ class CourseSerializer(serializers.ModelSerializer):
     term = TermSerializer(read_only=True)
     image = ImageSerializer(read_only=True)
     coordinators_summary = EduquestUserSummarySerializer(many=True, read_only=True, source='coordinators')
+    total_students_enrolled = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = '__all__'
+
+    def get_total_students_enrolled(self, obj):
+        return obj.total_students_enrolled()
 
     def create(self, validated_data):
         # Extract the coordinators
@@ -169,8 +163,13 @@ class CourseSerializer(serializers.ModelSerializer):
         if coordinators is not None:
             instance.coordinators.set(coordinators)
 
-        # If the status is changed from Active to Expired,
-        # Set all active quests in the course to Expired
+        """
+        1. If coordinator set the course from Active to Expired (so that 'course' related badge can be issued)
+        1. Set all the quests in all the course groups associated with the course as Expired
+        2. Assumption: Each user can only be enrolled in one course group within the course
+        3. Check if the user has completed all quests within the course group that he is enrolled in
+        4. If the user has completed all quests within the course group, set completed_on in user course as Completed
+        """
         status = validated_data.get('status', None)
         if instance.status == 'Active' and status == 'Expired':
             quests = Quest.objects.filter(from_course_group__course=instance, status='Active')
@@ -179,6 +178,31 @@ class CourseSerializer(serializers.ModelSerializer):
                 quest.status = 'Expired'
                 quest.expiration_date = expired_date
                 quest.save()
+
+            user_course_group_enrollments = UserCourseGroupEnrollment.objects.filter(course_group__course=instance)
+            # Iterate over each user course group enrollment
+            for user_course_group_enrollment in user_course_group_enrollments:
+                # Check if the user has completed at least one quest attempt for all quests within the course group
+                quests = Quest.objects.filter(from_course_group=user_course_group_enrollment.course_group)
+                all_quests_completed = True
+                for quest in quests:
+                    user_quest_attempts = UserQuestAttempt.objects.filter(student=user_course_group_enrollment.student, quest=quest)
+                    # If the user has not attempted any quest, set all_quests_completed to False
+                    if not user_quest_attempts.exists():
+                        all_quests_completed = False
+                        break
+                    # Check if the user has submitted all questions for each quest
+                    for user_quest_attempt in user_quest_attempts:
+                        # If the user has submitted at least one quest attempt for every quest
+                        # Set submitted to True
+                        if not user_quest_attempt.submitted:
+                            all_quests_completed = False
+                            break
+                # If all quests are completed, set the user course group enrollment as completed
+                if all_quests_completed:
+                    user_course_group_enrollment.completed_on = timezone.now()
+                    user_course_group_enrollment.save()
+
 
 
         for attr, value in validated_data.items():
@@ -204,13 +228,16 @@ class CourseGroupSerializer(serializers.ModelSerializer):
         source='instructor',
         write_only=True
     )
-    course = CourseSerializer(read_only=True)
+    course = serializers.PrimaryKeyRelatedField(
+        source='course.id',
+        read_only=True,
+    )
     instructor = EduquestUserSummarySerializer(read_only=True)
 
     class Meta:
         model = CourseGroup
-        fields = '__all__'
-
+        fields = ['id', 'course_id', 'instructor_id', 'course', 'instructor', 'name',
+                  'session_day', 'session_time']
     def update(self, instance, validated_data):
         course = validated_data.pop('course', None)
         if course:
@@ -230,24 +257,49 @@ class UserCourseGroupEnrollmentSerializer(serializers.ModelSerializer):
     course_group_id = serializers.PrimaryKeyRelatedField(
         queryset=CourseGroup.objects.all(),
         source='course_group',
-        write_only=True
+        # write_only=True
     )
     student_id = serializers.PrimaryKeyRelatedField(
         queryset=EduquestUser.objects.all(),
         source='student',
-        write_only=True
+        # write_only=True
     )
-    course_group = CourseGroupSerializer(read_only=True)
-    student = EduquestUserSummarySerializer(read_only=True)
+    # course_group = CourseGroupSerializer(read_only=True)
+    # student = EduquestUserSummarySerializer(read_only=True)
 
     class Meta:
         model = UserCourseGroupEnrollment
-        fields = '__all__'
+        fields = ['id', 'course_group_id', 'student_id', 'enrolled_on', 'completed_on']
+
+    def validate(self, attrs):
+        student = attrs.get('student')
+        course_group = attrs.get('course_group')
+        instance = self.instance
+
+        # Check if an enrollment for this student in the same course group already exists
+        if UserCourseGroupEnrollment.objects.filter(student=student, course_group=course_group).exclude(id=instance.id if instance else None).exists():
+            raise serializers.ValidationError({
+                'enrollment': 'This student is already enrolled in this course group.'
+            })
+
+        # Check if the student is already enrolled in another course group within the same course
+        course = course_group.course
+        if UserCourseGroupEnrollment.objects.filter(student=student, course_group__course=course).exclude(id=instance.id if instance else None).exists():
+            raise serializers.ValidationError({
+                'enrollment': 'This student is already enrolled in another course group within the same course.'
+            })
+
+        return attrs
 
     def update(self, instance, validated_data):
         course_group = validated_data.pop('course_group', None)
-        if course_group:
+        if course_group and instance.course_group != course_group:
             instance.course_group = course_group
+            # Reset the enrollment date if the course group is changed
+            instance.enrolled_on = datetime.now()
+            # Reset the completion date if the course group is changed
+            instance.completed_on = None
+
 
         student = validated_data.pop('student', None)
         if student:
@@ -318,53 +370,64 @@ class QuestSerializer(serializers.ModelSerializer):
 
 
 class AnswerSerializer(serializers.ModelSerializer):
-    # Explicitly include the id field
-    id = serializers.IntegerField(required=False)
-
     class Meta:
         model = Answer
-        fields = '__all__'
-        extra_kwargs = {
-            'question': {'required': False}  # Make the question field optional during create
-        }
+        fields = ['id', 'text', 'is_correct', 'reason']
 
 
 class QuestionSerializer(serializers.ModelSerializer):
-    answers = AnswerSerializer(many=True, required=False)
-    id = serializers.IntegerField(required=False)  # Explicitly include the id field
+    quest_id = serializers.PrimaryKeyRelatedField(
+        queryset=Quest.objects.all(),
+        source='quest',
+        write_only=True
+    )
+    # Nested serializer for answers
+    answers = AnswerSerializer(many=True)
+
     class Meta:
         model = Question
-        fields = '__all__'
-        list_serializer_class = BulkSerializer
+        fields = ['id', 'quest_id', 'text', 'number', 'max_score', 'answers']
 
-    # Create question with new answers (without specifying answer IDs)
     def create(self, validated_data):
-        answers_data = validated_data.pop('answers', [])
+        # Extract the nested answer data
+        answers_data = validated_data.pop('answers')
+
+        # Create the question instance
         question = Question.objects.create(**validated_data)
 
-        # Note: Do not specify 'question' in each answer_data
+        # Create related answers and associate them with the created question
         for answer_data in answers_data:
             Answer.objects.create(question=question, **answer_data)
 
         return question
 
     def update(self, instance, validated_data):
-        answers_data = validated_data.pop('answers', [])
+        # Update the question instance attributes
+        instance.text = validated_data.get('text', instance.text)
+        instance.number = validated_data.get('number', instance.number)
+        instance.max_score = validated_data.get('max_score', instance.max_score)
 
-        # Handle nested answers
-        for answer_data in answers_data:
-            answer_id = answer_data.get('id', None)
-            if answer_id:
-                answer_instance = Answer.objects.get(id=answer_id, question=instance)
+        # Update answers if provided
+        if 'answers' in validated_data:
+            answers_data = validated_data.pop('answers')
 
-            else:
-                answer_instance = Answer(question=instance)
+            # Delete existing answers and create new ones
+            instance.answers.all().delete()
+            for answer_data in answers_data:
+                Answer.objects.create(question=instance, **answer_data)
 
-            answer_instance.text = answer_data.get('text', answer_instance.text)
-            answer_instance.is_correct = answer_data.get('is_correct', answer_instance.is_correct)
-            answer_instance.save()
+        instance.save()
+        return instance
 
-        # Update other fields as usual
+
+    def update(self, instance, validated_data):
+        # Change the parent quest if provided (Not used in the current implementation)
+        quest = validated_data.pop('quest', None)
+        if quest:
+            instance.quest = quest
+
+
+        # Update the question instance attributes
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -372,21 +435,22 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class UserQuestAttemptSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
-    quest = QuestSerializer(required=False)
-    # total_score_achieved = serializers.SerializerMethodField(required=False, read_only=True)
-    time_taken = serializers.SerializerMethodField(required=False, read_only=True)
-    total_score_achieved = serializers.FloatField(required=False)
+    quest_id = serializers.PrimaryKeyRelatedField(
+        queryset=Quest.objects.all(),  # Handles both read and write
+        source='quest'  # Maps to the 'quest' ForeignKey field in the model
+    )
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),  # Handles both read and write
+        source='student'  # Maps to the 'student' ForeignKey field in the model
+    )
+    # quest = QuestSerializer(read_only=True)
+    # student = EduquestUserSummarySerializer(read_only=True)
+    time_taken = serializers.ReadOnlyField()
 
     class Meta:
         model = UserQuestAttempt
-        fields = '__all__'
-        list_serializer_class = BulkSerializer
-
-    # def get_total_score_achieved(self, obj):
-    #     if isinstance(obj, OrderedDict):
-    #         return None
-    #     return obj.total_score_achieved()
+        fields = ['id', 'quest_id', 'student_id', 'submitted', 'time_taken',
+                  'total_score_achieved', 'first_attempted_date', 'last_attempted_date']
 
     def get_time_taken(self, obj):
         if isinstance(obj, OrderedDict):
@@ -394,87 +458,40 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
         return obj.time_taken()
 
     def create(self, validated_data):
-        quest_data = validated_data.pop('quest')
-        quest = Quest.objects.get(id=quest_data['id'])
-        user_quest_attempt = UserQuestAttempt.objects.create(quest=quest, **validated_data)
+        # Pop student and quest from validated data
+        student = validated_data.pop('student')
+        quest = validated_data.pop('quest')
 
-        # Create a UserQuestQuestionAttempt instance with empty selected_answers for newly created UserQuestAttempt
-        questions = Question.objects.filter(from_quest=user_quest_attempt.quest)
+        # Create a UserQuestAttempt instance
+        user_quest_attempt = UserQuestAttempt.objects.create(student=student, quest=quest, **validated_data)
 
-        # Create UserQuestQuestionAttempt for each question in the quest
+        # Create UserAnswerAttempt for each question in the quest
+        questions = Question.objects.filter(quest=user_quest_attempt.quest)
+        user_answer_attempts = []
+
         for question in questions:
-            user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
-                user_quest_attempt=user_quest_attempt,
-                question=question,
-                score_achieved=0,
-            )
-            # Create AttemptAnswerRecord for each answer in the question
-            # Set is_selected to False for each answer
             answers = Answer.objects.filter(question=question)
             for answer in answers:
-                AttemptAnswerRecord.objects.create(
-                    user_quest_question_attempt=user_quest_question_attempt,
+                user_answer_attempts.append(UserAnswerAttempt(
+                    user_quest_attempt=user_quest_attempt,
+                    question=question,
                     answer=answer,
-                    is_selected=False  # Marking is_selected as False
-                )
+                    is_selected=False,
+                ))
+        # Bulk create all UserAnswerAttempt instances
+        UserAnswerAttempt.objects.bulk_create(user_answer_attempts)
 
         return user_quest_attempt
 
-    def update(self, instance, validated_data):
-        # Exclude aggregated fields from the update process
-        validated_data.pop('time_taken', None)
-
-        # Get the user's highest score achieved for all quest attempted in this quest
-        user_quest_attempts = UserQuestAttempt.objects.filter(user=instance.user, quest=instance.quest)
-        highest_score_achieved = 0
-        for user_quest_attempt in user_quest_attempts:
-            if user_quest_attempt.total_score_achieved > highest_score_achieved:
-                highest_score_achieved = user_quest_attempt.total_score_achieved
-
-        # Aggregate the total_score_achieved when the all_questions_submitted is True from False
-        all_questions_submitted = validated_data.get('all_questions_submitted', None)
-        if all_questions_submitted and not instance.all_questions_submitted:
-            validated_data.pop('all_questions_submitted', None)
-            validated_data.pop('total_score_achieved', None)
-            total_score_achieved = instance.calculate_total_score_achieved()
-            instance.total_score_achieved = total_score_achieved
-            instance.all_questions_submitted = True
-
-            # Check if the user's total_score_achieved is higher than the highest_score_achieved
-            # If it is, credit the amount to the user's total_points
-            if total_score_achieved > highest_score_achieved and instance.quest.type != 'Private':
-                instance.user.total_points += total_score_achieved - highest_score_achieved
-                instance.user.save()
-
-        # Update other fields as usual
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-        return instance
-
-
-class AttemptAnswerRecordSerializer(serializers.ModelSerializer):
-    answer = AnswerSerializer()
-    id = serializers.IntegerField(required=False)  # Explicitly include the id field
-    class Meta:
-        model = AttemptAnswerRecord
-        fields = '__all__'
-
-    def create(self, validated_data):
-        answer_data = validated_data.pop('answer')
-        answer = Answer.objects.get(id=answer_data['id'])
-        attempt_answer_record = AttemptAnswerRecord.objects.create(
-            user_quest_question_attempt=validated_data['user_quest_question_attempt'],
-            answer=answer,
-            is_selected=validated_data['is_selected']
-        )
-        return attempt_answer_record
 
     def update(self, instance, validated_data):
-        answer_data = validated_data.pop('answer')
-        answer = Answer.objects.get(id=answer_data['id'])
-        instance.answer = answer
+        student = validated_data.pop('student', None)
+        if student:
+            instance.student = student
+
+        quest = validated_data.pop('quest', None)
+        if quest:
+            instance.quest = quest
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -482,79 +499,184 @@ class AttemptAnswerRecordSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserQuestQuestionAttemptSerializer(serializers.ModelSerializer):
-    selected_answers = AttemptAnswerRecordSerializer(many=True, required=False)
-    question = QuestionSerializer(required=False)
-    id = serializers.IntegerField(required=False)
+class BulkUpdateUserQuestAttemptSerializer(serializers.Serializer):
+    """
+    Used for setting the 'submitted' field for multiple UserQuestAttempt instances
+    during quest import
+    """
+    ids = serializers.ListField(
+        child=serializers.IntegerField(),  # Expecting a list of integers (UserQuestAttempt IDs)
+        write_only=True
+    )
+    submitted = serializers.BooleanField()
 
     class Meta:
-        model = UserQuestQuestionAttempt
-        fields = '__all__'
-        list_serializer_class = BulkSerializer
+        fields = ['ids', 'submitted']
+
+    def update(self, validated_data):
+        ids = validated_data['ids']
+        submitted = validated_data['submitted']
+
+        # Retrieve the instances based on the IDs provided
+        user_quest_attempts = UserQuestAttempt.objects.filter(id__in=ids)
+
+        # Iterate over each instance and apply the custom update logic
+        for instance in user_quest_attempts:
+            instance_data = {'submitted': submitted}
+            # Call the existing update method logic for each instance
+            self.context['view'].get_serializer().update(instance, instance_data)
+
+        # Optionally return the updated records or a success message
+        return user_quest_attempts
+
+
+class UserAnswerAttemptSerializer(serializers.ModelSerializer):
+    user_quest_attempt_id = serializers.PrimaryKeyRelatedField(
+        queryset=UserQuestAttempt.objects.all(),
+        source='user_quest_attempt',
+        # write_only=True
+    )
+    question_id = serializers.PrimaryKeyRelatedField(
+        queryset=Question.objects.all(),
+        source='question',
+        # write_only=True
+    )
+    answer_id = serializers.PrimaryKeyRelatedField(
+        queryset=Answer.objects.all(),
+        source='answer',
+        # write_only=True
+    )
+    # question = QuestionSerializer(read_only=True)
+    # answer = AnswerSerializer(read_only=True)
+
+    class Meta:
+        model = UserAnswerAttempt
+        fields = [
+            'id',
+            'user_quest_attempt_id',
+            'question_id',
+            # 'question',
+            'answer_id',
+            # 'answer',
+            'is_selected',
+            'score_achieved'
+        ]
+        read_only_fields = ['score_achieved']  # Score is calculated and shouldn't be set directly
 
     def create(self, validated_data):
-        question_data = validated_data.pop('question')
-        question = Question.objects.get(id=question_data['id'])
-
-        user_quest_question_attempt = UserQuestQuestionAttempt.objects.create(
-            user_quest_attempt=validated_data['user_quest_attempt'],
-            question=question,
-            score_achieved=validated_data['score_achieved'],
-            # submitted=validated_data['submitted']
-        )
-        return user_quest_question_attempt
+        return UserAnswerAttempt.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        selected_answers_data = validated_data.pop('selected_answers', [])
-
-        # Handle nested selected_answers
-        for selected_answer_data in selected_answers_data:
-            attempt_answer_record_id = selected_answer_data.get('id')
-            attempt_answer_record = AttemptAnswerRecord.objects.get(id=attempt_answer_record_id)
-
-            # Ensure 'answer' is treated as a dictionary
-            answer_data = selected_answer_data.get('answer')
-            if isinstance(answer_data, dict):  # Ensure it's a dictionary
-                answer_id = answer_data['id']
-                answer_instance = Answer.objects.get(id=answer_id)
-                attempt_answer_record.answer = answer_instance
-
-            attempt_answer_record.is_selected = selected_answer_data['is_selected']
-            attempt_answer_record.save()
-
-        # Handle question data
-        question_data = validated_data.pop('question')
-        question = Question.objects.get(id=question_data['id'])
-        instance.question = question
-
-        # Update other fields as usual
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        # Since foreign keys shouldn't change, we don't need to update them
+        instance.is_selected = validated_data.get('is_selected', instance.is_selected)
         instance.save()
         return instance
+
+
+class BulkUpdateUserAnswerAttemptSerializer(serializers.Serializer):
+    """
+    Serializer to bulk update 'is_selected' field for multiple UserAnswerAttempt instances.
+    """
+    ids = serializers.ListField(
+        child=serializers.IntegerField(),  # Expecting a list of UserAnswerAttempt IDs
+        write_only=True
+    )
+    is_selected = serializers.BooleanField()
+
+    class Meta:
+        fields = ['ids', 'is_selected']
+
+    def update(self, validated_data):
+        ids = validated_data['ids']
+        is_selected = validated_data['is_selected']
+
+        # Retrieve the instances based on the IDs provided
+        user_answer_attempts = UserAnswerAttempt.objects.filter(id__in=ids)
+
+        # Iterate over each instance and apply the custom update logic
+        for instance in user_answer_attempts:
+            instance_data = {'is_selected': is_selected}
+            # Call the existing update method logic for each instance
+            self.context['view'].get_serializer().update(instance, instance_data)
+
+        # Optionally return the updated records or a success message
+        return user_answer_attempts
 
 
 class BadgeSerializer(serializers.ModelSerializer):
-    image = ImageSerializer()
+    image_id = serializers.PrimaryKeyRelatedField(
+        queryset=Image.objects.all(),
+        source='image',
+        write_only=True
+    )
+    image = ImageSerializer(read_only=True)
     class Meta:
         model = Badge
         fields = '__all__'
 
 
+class UserCourseBadgeSerializer(serializers.ModelSerializer):
+    badge_id = serializers.PrimaryKeyRelatedField(
+        queryset=Badge.objects.all(),
+        source='badge',
+        write_only=True
+    )
+    user_course_group_enrollment_id = serializers.PrimaryKeyRelatedField(
+        queryset=UserCourseGroupEnrollment.objects.all(),
+        source='user_course_group_enrollment',
+        write_only=True
+    )
+    badge = BadgeSerializer(read_only=True)
+    user_course_group_enrollment = UserCourseGroupEnrollmentSerializer(read_only=True)
+    class Meta:
+        model = UserCourseBadge
+        fields = '__all__'
+
+    def update(self, instance, validated_data):
+        badge = validated_data.pop('badge', None)
+        if badge:
+            instance.badge = badge
+
+        user_course_group_enrollment = validated_data.pop('user_course_group_enrollment', None)
+        if user_course_group_enrollment:
+            instance.user_course_group_enrollment = user_course_group_enrollment
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
 class UserQuestBadgeSerializer(serializers.ModelSerializer):
-    badge = BadgeSerializer()
-    quest_attempted = UserQuestAttemptSerializer()
+    badge_id = serializers.PrimaryKeyRelatedField(
+        queryset=Badge.objects.all(),
+        source='badge',
+        write_only=True
+    )
+    user_quest_attempt_id = serializers.PrimaryKeyRelatedField(
+        queryset=UserQuestAttempt.objects.all(),
+        source='user_quest_attempt',
+        write_only=True
+    )
+    badge = BadgeSerializer(read_only=True)
+    user_quest_attempt = UserQuestAttemptSerializer(read_only=True)
     class Meta:
         model = UserQuestBadge
         fields = '__all__'
 
+    def update(self, instance, validated_data):
+        badge = validated_data.pop('badge', None)
+        if badge:
+            instance.badge = badge
 
-class UserCourseBadgeSerializer(serializers.ModelSerializer):
-    badge = BadgeSerializer()
-    course_completed = UserCourseGroupEnrollmentSerializer()
-    class Meta:
-        model = UserCourseBadge
-        fields = '__all__'
+        user_quest_attempt = validated_data.pop('user_quest_attempt', None)
+        if user_quest_attempt:
+            instance.user_quest_attempt = user_quest_attempt
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class DocumentSerializer(serializers.ModelSerializer):

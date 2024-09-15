@@ -28,8 +28,9 @@ from .models import (
     Question,
     Answer,
     UserQuestAttempt,
-    UserQuestQuestionAttempt,
-    AttemptAnswerRecord,
+    UserAnswerAttempt,
+    # UserQuestQuestionAttempt,
+    # AttemptAnswerRecord,
     Badge,
     UserQuestBadge,
     UserCourseBadge,
@@ -47,12 +48,13 @@ from .serializers import (
     QuestionSerializer,
     AnswerSerializer,
     UserQuestAttemptSerializer,
-    UserQuestQuestionAttemptSerializer,
-    AttemptAnswerRecordSerializer,
+    UserAnswerAttemptSerializer,
+    # UserQuestQuestionAttemptSerializer,
+    # AttemptAnswerRecordSerializer,
     BadgeSerializer,
     UserQuestBadgeSerializer,
     UserCourseBadgeSerializer,
-    DocumentSerializer
+    DocumentSerializer, BulkUpdateUserQuestAttemptSerializer, BulkUpdateUserAnswerAttemptSerializer
 )
 # from django.http import HttpResponse
 
@@ -100,6 +102,13 @@ class CourseGroupViewSet(viewsets.ModelViewSet):
     serializer_class = CourseGroupSerializer
     permission_classes = [IsAuthenticated]
 
+    @action(detail=False, methods=['get'])
+    def by_course(self, request):
+        course_id = request.query_params.get('course_id')
+        queryset = CourseGroup.objects.filter(course=course_id).order_by('-id')
+        serializer = CourseGroupSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
     queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
@@ -122,17 +131,12 @@ class QuestViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def by_enrolled_user(self, request):
         user_id = request.query_params.get('user_id')
-        # Get all course groups the user is enrolled in by filtering UserCourseGroupEnrollment
-        course_groups = CourseGroup.objects.filter(
-            enrolled_students__students__id=user_id
-        ).distinct()
-
-        # Debugging output
-        print(f"Course Groups for User {user_id}: {course_groups}")
-
-        # Get all quests from those course groups
-        queryset = Quest.objects.filter(course_group__in=course_groups).distinct().order_by('-id')
-
+        # Get all course group enrollments for the user
+        course_group_enrollments = UserCourseGroupEnrollment.objects.filter(student=user_id)
+        # Get all quests for the course groups
+        queryset = Quest.objects.filter(
+            course_group__in=course_group_enrollments.values('course_group')
+        ).order_by('-id')
         serializer = QuestSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -142,6 +146,369 @@ class QuestViewSet(viewsets.ModelViewSet):
         queryset = Quest.objects.filter(course_group=course_group_id).order_by('-id')
         serializer = QuestSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def import_quest(self, request):
+        excel_file = request.FILES.get('file')
+        if not excel_file:
+            return JsonResponse(data={"No file provided, please try again"}, status=400)
+        try:
+            excel = Excel()
+            excel.read_excel_sheets(excel_file)
+            questions_data = excel.get_questions()
+            users_data = excel.get_users()
+        except Exception as e:
+            return JsonResponse(data={"Error processing excel file": str(e)}, status=400)
+
+        # Extract other form data
+        quest_data = {
+            'type': request.data.get('type'),
+            'name': request.data.get('name'),
+            'description': request.data.get('description'),
+            'status': request.data.get('status'),
+            'max_attempts': request.data.get('max_attempts'),
+            'course_group_id': request.data.get('course_group_id'),
+            'image_id': request.data.get('image_id'),
+            'organiser_id': request.data.get('organiser_id')
+        }
+        # Create a Quest object
+        quest_serializer = QuestSerializer(data=quest_data)
+
+        if quest_serializer.is_valid():
+            # Save the Quest object
+            quest_serializer.save()
+            # Get the ID of the newly created Quest object
+            new_quest_id = quest_serializer.data.get('id')
+            print(f"New Quest ID: {new_quest_id}")
+            course_group = quest_serializer.data.get('course_group')
+
+            questions_serializer = []
+            # Process each question in the questions_data list
+            for question_data in questions_data:
+                print(f"Question data: {question_data}")
+                # Extract question data
+                question_data['quest_id'] = new_quest_id
+                # Create a Question object for each question
+                question_serializer = QuestionSerializer(data=question_data)
+                if question_serializer.is_valid():
+                    question_serializer.save()
+                    # Return the question data
+                    questions_serializer.append(question_serializer.data)
+                else:
+                    return Response(data={"Error creating questions": question_serializer.errors},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            #
+            # Create UserQuestAttempt object (auto-generate UserAnswerAttempt objects)
+            for user_data in users_data:
+                # Create a User object
+                user, created = EduquestUser.objects.get_or_create(
+                    email=user_data['email'],
+                    defaults={
+                        'email': user_data['email'],
+                        'username': user_data['username'],
+                        'nickname': user_data['username']
+                    }
+                )
+                # Enroll the users in the course_group if they are not already enrolled
+                UserCourseGroupEnrollment.objects.get_or_create(
+                    student_id=user.id,
+                    course_group_id=course_group['id']
+                )
+                #
+                # Create a UserQuestAttempt object for each User
+                user_quest_attempt_data = {
+                    'student_id': user.id,
+                    'quest_id': new_quest_id
+                }
+                user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
+                if user_quest_attempt_serializer.is_valid():
+                    user_quest_attempt_serializer.save()
+                    # Get the ID of the newly created UserQuestAttempt object
+                    new_user_quest_attempt_id = user_quest_attempt_serializer.data.get('id')
+                    print(f"New UserQuestAttempt ID: {new_user_quest_attempt_id}")
+                    # print(f"User question attempts: {user_question_attempts}")
+                else:
+                    return Response(
+                        data={"Error user quest attempt template": user_quest_attempt_serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+                # Create UserAnswerAttempt objects for each UserQuestAttempt
+                for question_serializer in questions_serializer:
+                    # Iterate through each answer record in selected_answers
+                    for answer_serializer in question_serializer['answers']:
+                        user_answer_attempt_data = {
+                            'user_quest_attempt_id': new_user_quest_attempt_id,
+                            'question_id': question_serializer['id'],
+                            'answer_id': answer_serializer['id'],
+                            'is_selected': False
+                        }
+                        user_answer_attempt_serializer = UserAnswerAttemptSerializer(
+                            data=user_answer_attempt_data)
+                        if user_answer_attempt_serializer.is_valid():
+                            user_answer_attempt_serializer.save()
+                        else:
+                            return Response(data={
+                                "Error creating user answer attempts": user_answer_attempt_serializer.errors},
+                                            status=status.HTTP_400_BAD_REQUEST)
+
+                user_answer_attempts = UserAnswerAttempt.objects.filter(
+                    user_quest_attempt=new_user_quest_attempt_id)
+                try:
+                    # Iterate through each user_answer_attempts question
+                    for user_answer_attempt in user_answer_attempts:
+                        print(f"User question attempt: {user_answer_attempt.question.text}")
+                        # Get the wooclap_questions_selected_answers for the user
+                        print(f"User: {user.email}")
+                        wooclap_questions_selected_answers = excel.get_user_answer_attempts(user.email)
+                        print(f"Wooclap questions selected answers: {wooclap_questions_selected_answers}")
+                        # Iterate through each wooclap_question_selected_answers
+                        for wooclap_question_selected_answers in wooclap_questions_selected_answers:
+                            # print(f"Wooclap question selected answers: {wooclap_question_selected_answers}")
+                            # If the question in the wooclap_question_selected_answers matches
+                            # the user_question_attempt question
+                            """
+                            wooclap_question_selected_answers
+                            {
+                                'question': 'What is the primary key in a database?',
+                                'selected_answers': ['A field in a table that uniquely identifies each row']
+                            }
+                            """
+                            if wooclap_question_selected_answers[
+                                'question'] == user_answer_attempt.question.text:
+
+                                #                                 # Get the AttemptAnswerRecord objects for the user_question_attempt
+                                #                                 answer_records = AttemptAnswerRecord.objects.filter(user_quest_question_attempt=user_question_attempt.id)
+                                #
+                                # Iterate through each answer record in selected_answers
+                                for wooclap_selected_answer in wooclap_question_selected_answers[
+                                    'selected_answers']:
+                                    # Iterate through each 'empty' attempted answer records in the system
+                                    #                                     for answer_record in answer_records:
+                                    # If the answer in the user_answer_attempt  matches the selected answer in wooclap
+                                    if user_answer_attempt.answer.text == wooclap_selected_answer:
+                                        # print(f"Selected answer: {selected_answer.answer.text}")
+                                        user_answer_attempt.is_selected = True
+                                        user_answer_attempt.save()
+                except Exception as e:
+                    return Response(data={"Error updating selected answers": str(e)},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(questions_serializer, status=status.HTTP_201_CREATED)
+        else:
+            return Response(data={"Error creating quest": quest_serializer.errors},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all().order_by('-id')
+    serializer_class = QuestionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        # Check if the request contains a list (bulk create)
+        if isinstance(request.data, list):
+            # Many=True indicates we're expecting a list of data
+            serializer = self.get_serializer(data=request.data, many=True)
+            serializer.is_valid(raise_exception=True)
+
+            # Save all the questions (bulk creation)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # Fallback to single object creation
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class AnswerViewSet(viewsets.ModelViewSet):
+    queryset = Answer.objects.all().order_by('-id')
+    serializer_class = AnswerSerializer
+    permission_classes = [IsAuthenticated]
+
+
+    @action(detail=False, methods=['put'], url_path='bulk-update')
+    def bulk_update(self, request):
+        if not isinstance(request.data, list):
+            return Response({"error": "Expected a list of items."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        # Collect the IDs of the answers to update
+        answer_ids = [item['id'] for item in serializer.validated_data]
+
+        # Retrieve the existing answers from the database
+        answers = Answer.objects.filter(id__in=answer_ids)
+
+        # Map existing answers by ID for easy lookup
+        answer_dict = {answer.id: answer for answer in answers}
+
+        updated_answers = []
+        for item in serializer.validated_data:
+            answer_id = item.get('id')
+            if answer_id in answer_dict:
+                answer_instance = answer_dict[answer_id]
+                # Update the fields
+                for attr, value in item.items():
+                    setattr(answer_instance, attr, value)
+                answer_instance.save()
+                updated_answers.append(answer_instance)
+            else:
+                return Response({"error": f"Answer with id {answer_id} does not exist."},
+                                status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the updated answers to return in the response
+        output_serializer = self.get_serializer(updated_answers, many=True)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+class UserQuestAttemptViewSet(viewsets.ModelViewSet):
+    queryset = UserQuestAttempt.objects.all().order_by('-id')
+    serializer_class = UserQuestAttemptSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def by_user_quest(self, request):
+        quest_id = request.query_params.get('quest_id')
+        user_id = request.query_params.get('user_id')
+        queryset = UserQuestAttempt.objects.filter(student=user_id, quest=quest_id).order_by('-id')
+        serializer = UserQuestAttemptSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_quest(self, request):
+        quest_id = request.query_params.get('quest_id')
+        queryset = UserQuestAttempt.objects.filter(quest=quest_id).order_by('-id')
+        serializer = UserQuestAttemptSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['patch'], url_path='bulk-update')
+    def bulk_update(self, request, *args, **kwargs):
+        """
+        Bulk update UserQuestAttempt
+        """
+        if isinstance(request.data, list):
+            updated_attempts = []
+            for attempt_data in request.data:
+                attempt_id = attempt_data.get('id')
+                if not attempt_id:
+                    return Response({"error": "ID is required for each attempt."}, status=status.HTTP_400_BAD_REQUEST)
+
+                try:
+                    # Retrieve the instance to update
+                    attempt_instance = UserQuestAttempt.objects.get(id=attempt_id)
+                except UserQuestAttempt.DoesNotExist:
+                    return Response({"error": f"UserQuestAttempt with id {attempt_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+                # Use the existing serializer for each update
+                serializer = self.get_serializer(instance=attempt_instance, data=attempt_data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_attempts.append(serializer.data)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({"updated_attempts": updated_attempts}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Expected a list of data."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserAnswerAttemptViewSet(viewsets.ModelViewSet):
+    queryset = UserAnswerAttempt.objects.all().order_by('-id')
+    serializer_class = UserAnswerAttemptSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def by_user_quest_attempt(self, request):
+        user_quest_attempt_id = request.query_params.get('user_quest_attempt_id')
+        queryset = UserAnswerAttempt.objects.filter(user_quest_attempt=user_quest_attempt_id).order_by('-id')
+        serializer = UserAnswerAttemptSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_quest(self, request):
+        quest_id = request.query_params.get('quest_id')
+        queryset = UserAnswerAttempt.objects.filter(user_quest_attempt__quest=quest_id).order_by('-id')
+        serializer = UserAnswerAttemptSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['patch'], url_path='bulk-update')
+    def bulk_update(self, request, *args, **kwargs):
+        """
+        Bulk update UserAnswerAttempt
+        """
+        if isinstance(request.data, list):
+            updated_attempts = []
+            for attempt_data in request.data:
+                attempt_id = attempt_data.get('id')
+                if not attempt_id:
+                    return Response({"error": "ID is required for each attempt."}, status=status.HTTP_400_BAD_REQUEST)
+
+                try:
+                    # Retrieve the instance to update
+                    attempt_instance = UserAnswerAttempt.objects.get(id=attempt_id)
+                except UserAnswerAttempt.DoesNotExist:
+                    return Response({"error": f"UserAnswerAttempt with id {attempt_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+                # Use the existing serializer for each update
+                serializer = self.get_serializer(instance=attempt_instance, data=attempt_data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    updated_attempts.append(serializer.data)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({"updated_attempts": updated_attempts}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Expected a list of data."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# class UserQuestQuestionAttemptViewSet(viewsets.ModelViewSet):
+#     queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
+#     serializer_class = UserQuestQuestionAttemptSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     @action(detail=False, methods=['get'])
+#     def by_user_quest_attempt(self, request):
+#         user_quest_attempt_id = request.query_params.get('user_quest_attempt_id')
+#         queryset = UserQuestQuestionAttempt.objects.filter(user_quest_attempt=user_quest_attempt_id).order_by('-id')
+#         serializer = UserQuestQuestionAttemptSerializer(queryset, many=True)
+#         return Response(serializer.data)
+#
+#
+# class AttemptAnswerRecordViewSet(viewsets.ModelViewSet):
+#     queryset = AttemptAnswerRecord.objects.all().order_by('-id')
+#     serializer_class = AttemptAnswerRecordSerializer
+#     permission_classes = [IsAuthenticated]
+
+
+class BadgeViewSet(viewsets.ModelViewSet):
+    queryset = Badge.objects.all().order_by('-id')
+    serializer_class = BadgeSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class UserQuestBadgeViewSet(viewsets.ModelViewSet):
+    queryset = UserQuestBadge.objects.all().order_by('-id')
+    serializer_class = UserQuestBadgeSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class UserCourseBadgeViewSet(viewsets.ModelViewSet):
+    queryset = UserCourseBadge.objects.all().order_by('-id')
+    serializer_class = UserCourseBadgeSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class DocumentViewSet(viewsets.ModelViewSet):
+    queryset = Document.objects.all().order_by('-id')
+    serializer_class = DocumentSerializer
+    permission_classes = [IsAuthenticated]
+
+
+
 
 # class EduquestUserListCreateView(generics.ListCreateAPIView):
 #     permission_classes = [IsAuthenticated]
@@ -242,25 +609,25 @@ class CourseManageView(generics.RetrieveUpdateDestroyAPIView):
 #         return Course.objects.filter(enrolled_users__user=user_id).order_by('-id')
 
 
-class CourseGroupListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = CourseGroup.objects.all().order_by('-id')
-    serializer_class = CourseGroupSerializer
-
-
-class CourseGroupManageView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = CourseGroup.objects.all().order_by('-id')
-    serializer_class = CourseGroupSerializer
-
-
-class UserCourseGroupEnrollmentListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
-    serializer_class = UserCourseGroupEnrollmentSerializer
+# class CourseGroupListCreateView(generics.ListCreateAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = CourseGroup.objects.all().order_by('-id')
+#     serializer_class = CourseGroupSerializer
+#
+#
+# class CourseGroupManageView(generics.RetrieveUpdateDestroyAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = CourseGroup.objects.all().order_by('-id')
+#     serializer_class = CourseGroupSerializer
+#
+#
+# class UserCourseGroupEnrollmentListCreateView(generics.ListCreateAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
+#     serializer_class = UserCourseGroupEnrollmentSerializer
 
     # def perform_create(self, serializer):
     #     user = self.request.data.get('user')
@@ -276,11 +643,11 @@ class UserCourseGroupEnrollmentListCreateView(generics.ListCreateAPIView):
     #     serializer.save()
 
 
-class UserCourseGroupEnrollmentManageView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
-    serializer_class = UserCourseGroupEnrollmentSerializer
+# class UserCourseGroupEnrollmentManageView(generics.RetrieveUpdateDestroyAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
+#     serializer_class = UserCourseGroupEnrollmentSerializer
 
 
 class QuestImportView(APIView):
@@ -306,14 +673,10 @@ class QuestImportView(APIView):
             'description': request.data.get('description'),
             'status': request.data.get('status'),
             'max_attempts': request.data.get('max_attempts'),
-            'tutorial_date': request.data.get('tutorial_date'),
-            'from_course': json.loads(request.data.get('from_course')),
-            'image': json.loads(request.data.get('image')),
-            'organiser': json.loads(request.data.get('organiser'))
+            'course_group_id': request.data.get('course_group_id'),
+            'image_id': request.data.get('image_id'),
+            'organiser_id': request.data.get('organiser_id')
         }
-        last_attempted_on = quest_data['tutorial_date']
-        course = Course.objects.get(id=quest_data['from_course']['id'])
-        print(course.id)
         # Create a Quest object
         quest_serializer = QuestSerializer(data=quest_data)
 
@@ -322,16 +685,15 @@ class QuestImportView(APIView):
             quest_serializer.save()
             # Get the ID of the newly created Quest object
             new_quest_id = quest_serializer.data.get('id')
-            from_course = quest_serializer.data.get('from_course')
-            print(from_course)
-            course = Course.objects.get(id=from_course['id'])
-            print(course.id)
+            print(f"New Quest ID: {new_quest_id}")
+            course_group = quest_serializer.data.get('course_group')
+            course = Course.objects.get(id=course_group['id'])
 
             questions_serializer = []
             # Process each question in the questions_data list
             for question_data in questions_data:
                 # Extract question data
-                question_data['from_quest'] = new_quest_id
+                question_data['quest'] = new_quest_id
                 # Create a Question object for each question
                 question_serializer = QuestionSerializer(data=question_data)
                 if question_serializer.is_valid():
@@ -340,8 +702,8 @@ class QuestImportView(APIView):
                     questions_serializer.append(question_serializer.data)
                 else:
                     return Response(data={"Error creating questions": question_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Create UserQuestAttempt object (auto-generate UserQuestQuestionAttempt objects)
+#
+            # Create UserQuestAttempt object (auto-generate UserAnswerAttempt objects)
             for user_data in users_data:
                 # Create a User object
                 user, created = EduquestUser.objects.get_or_create(
@@ -352,20 +714,16 @@ class QuestImportView(APIView):
                         'nickname': user_data['username']
                     }
                 )
-                # Enroll the users in the course if they are not already enrolled
+                # Enroll the users in the course_group if they are not already enrolled
                 UserCourseGroupEnrollment.objects.get_or_create(
                     user=user,
-                    course=course
+                    course_group=course_group
                 )
-
+#
                 # Create a UserQuestAttempt object for each User
                 user_quest_attempt_data = {
-                    'user': user.id,
-                    'quest': {
-                        'id': new_quest_id
-                    },
-                    'first_attempted_on': last_attempted_on,
-                    'last_attempted_on': last_attempted_on,
+                    'student_id': user.id,
+                    'quest_id': new_quest_id
                 }
                 user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
                 if user_quest_attempt_serializer.is_valid():
@@ -373,20 +731,34 @@ class QuestImportView(APIView):
                     # Get the ID of the newly created UserQuestAttempt object
                     new_user_quest_attempt_id = user_quest_attempt_serializer.data.get('id')
                     print(f"New UserQuestAttempt ID: {new_user_quest_attempt_id}")
-                    # user_question_attempts = UserQuestQuestionAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
                     # print(f"User question attempts: {user_question_attempts}")
                 else:
                     return Response(data={"Error user quest attempt template": user_quest_attempt_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Update the selected_answers for the auto-generated UserQuestQuestionAttempt
-                user_question_attempts = UserQuestQuestionAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
+                # Create UserAnswerAttempt objects for each UserQuestAttempt
+                for question_serializer in questions_serializer:
+                    # Iterate through each answer record in selected_answers
+                    for answer_serializer in question_serializer['answers']:
+                        user_answer_attempt_data = {
+                            'user_quest_attempt_id': new_user_quest_attempt_id,
+                            'question_id': question_serializer['id'],
+                            'answer_id': answer_serializer['id'],
+                            'is_selected': False
+                        }
+                        user_answer_attempt_serializer = UserAnswerAttemptSerializer(data=user_answer_attempt_data)
+                        if user_answer_attempt_serializer.is_valid():
+                            user_answer_attempt_serializer.save()
+                        else:
+                            return Response(data={"Error creating user answer attempts": user_answer_attempt_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+                user_answer_attempts = UserAnswerAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
                 try:
-                    # Iterate through each user_question_attempt question
-                    for user_question_attempt in user_question_attempts:
-                        print(f"User question attempt: {user_question_attempt.question.text}")
+                    # Iterate through each user_answer_attempts question
+                    for user_answer_attempt in user_answer_attempts:
+                        print(f"User question attempt: {user_answer_attempt.question.text}")
                         # Get the wooclap_questions_selected_answers for the user
                         print(f"User: {user.email}")
-                        wooclap_questions_selected_answers = excel.get_user_question_attempts(user.email)
+                        wooclap_questions_selected_answers = excel.get_user_answer_attempts(user.email)
                         print(f"Wooclap questions selected answers: {wooclap_questions_selected_answers}")
                         # Iterate through each wooclap_question_selected_answers
                         for wooclap_question_selected_answers in wooclap_questions_selected_answers:
@@ -396,26 +768,27 @@ class QuestImportView(APIView):
                             """
                             wooclap_question_selected_answers
                             {
-                                'question': 'What is the primary key in a database?', 
+                                'question': 'What is the primary key in a database?',
                                 'selected_answers': ['A field in a table that uniquely identifies each row']
                             }
                             """
-                            if wooclap_question_selected_answers['question'] == user_question_attempt.question.text:
-                                # Get the AttemptAnswerRecord objects for the user_question_attempt
-                                answer_records = AttemptAnswerRecord.objects.filter(user_quest_question_attempt=user_question_attempt.id)
+                            if wooclap_question_selected_answers['question'] == user_answer_attempt.question.text:
 
+#                                 # Get the AttemptAnswerRecord objects for the user_question_attempt
+#                                 answer_records = AttemptAnswerRecord.objects.filter(user_quest_question_attempt=user_question_attempt.id)
+#
                                 # Iterate through each answer record in selected_answers
                                 for wooclap_selected_answer in wooclap_question_selected_answers['selected_answers']:
                                     # Iterate through each 'empty' attempted answer records in the system
-                                    for answer_record in answer_records:
-                                        # If the answer text in the answer record matches the selected answer in wooclap
-                                        if answer_record.answer.text == wooclap_selected_answer:
+#                                     for answer_record in answer_records:
+                                        # If the answer in the user_answer_attempt  matches the selected answer in wooclap
+                                        if user_answer_attempt.answer.text == wooclap_selected_answer:
                                             # print(f"Selected answer: {selected_answer.answer.text}")
-                                            answer_record.is_selected = True
-                                            answer_record.save()
+                                            user_answer_attempt.is_selected = True
+                                            user_answer_attempt.save()
                 except Exception as e:
                     return Response(data={"Error updating selected answers": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+#
             return Response(questions_serializer, status=status.HTTP_201_CREATED)
         else:
             return Response(data={"Error creating quest": quest_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -569,14 +942,14 @@ class UserQuestAttemptByQuestView(generics.ListAPIView):
         return UserQuestAttempt.objects.filter(quest=quest_id).order_by('-id')
 
 
-class UserQuestQuestionAttemptByQuestView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = UserQuestQuestionAttemptSerializer
-
-    def get_queryset(self):
-        quest_id = self.kwargs['quest_id']
-        user_quest_attempts = UserQuestAttempt.objects.filter(quest=quest_id)
-        return UserQuestQuestionAttempt.objects.filter(user_quest_attempt__in=user_quest_attempts)
+# class UserQuestQuestionAttemptByQuestView(generics.ListAPIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = UserQuestQuestionAttemptSerializer
+#
+#     def get_queryset(self):
+#         quest_id = self.kwargs['quest_id']
+#         user_quest_attempts = UserQuestAttempt.objects.filter(quest=quest_id)
+#         return UserQuestQuestionAttempt.objects.filter(user_quest_attempt__in=user_quest_attempts)
 
 
 class BulkUpdateUserQuestAttemptView(APIView):
@@ -603,67 +976,67 @@ class BulkUpdateUserQuestAttemptView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserQuestQuestionAttemptListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
-    serializer_class = UserQuestQuestionAttemptSerializer
-
-
-class UserQuestQuestionAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
-    serializer_class = UserQuestQuestionAttemptSerializer
-
-
-class BulkUpdateUserQuestQuestionAttemptView(APIView):
-    def patch(self, request, *args, **kwargs):
-        serializer = UserQuestQuestionAttemptSerializer(data=request.data, many=True)
-        if serializer.is_valid():
-            ids = [item.get('id') for item in request.data if 'id' in item]
-            instances = UserQuestQuestionAttempt.objects.filter(id__in=ids)
-
-            # Check if Quest has expired
-            for instance in instances:
-                quest = Quest.objects.get(id=instance.user_quest_attempt.quest.id)
-                if quest.status == 'Expired':
-                    return Response({"detail": "Quest has expired."}, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    break
-
-            # Add logging to debug
-            print(f"UserQuestQuestionAttempt Instances found: {[instance.id for instance in instances]}")
-
-            if len(instances) != len(ids):
-                return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
-
-            serializer.update(instances, serializer.validated_data)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# class UserQuestQuestionAttemptListCreateView(generics.ListCreateAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
+#     serializer_class = UserQuestQuestionAttemptSerializer
+#
+#
+# class UserQuestQuestionAttemptManageView(generics.RetrieveUpdateDestroyAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = UserQuestQuestionAttempt.objects.all().order_by('-id')
+#     serializer_class = UserQuestQuestionAttemptSerializer
 
 
-class UserQuestQuestionAttemptByUserQuestAttemptView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = UserQuestQuestionAttemptSerializer
-
-    def get_queryset(self):
-        user_quest_attempt_id = self.kwargs['user_quest_attempt_id']
-        return UserQuestQuestionAttempt.objects.filter(user_quest_attempt=user_quest_attempt_id).order_by('question__number')
-
-
-class AttemptAnswerRecordListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = AttemptAnswerRecord.objects.all().order_by('-id')
-    serializer_class = AttemptAnswerRecordSerializer
-
-
-class AttemptAnswerRecordManageView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
-
-    queryset = AttemptAnswerRecord.objects.all().order_by('-id')
-    serializer_class = AttemptAnswerRecordSerializer
+# class BulkUpdateUserQuestQuestionAttemptView(APIView):
+#     def patch(self, request, *args, **kwargs):
+#         serializer = UserQuestQuestionAttemptSerializer(data=request.data, many=True)
+#         if serializer.is_valid():
+#             ids = [item.get('id') for item in request.data if 'id' in item]
+#             instances = UserQuestQuestionAttempt.objects.filter(id__in=ids)
+#
+#             # Check if Quest has expired
+#             for instance in instances:
+#                 quest = Quest.objects.get(id=instance.user_quest_attempt.quest.id)
+#                 if quest.status == 'Expired':
+#                     return Response({"detail": "Quest has expired."}, status=status.HTTP_400_BAD_REQUEST)
+#                 else:
+#                     break
+#
+#             # Add logging to debug
+#             print(f"UserQuestQuestionAttempt Instances found: {[instance.id for instance in instances]}")
+#
+#             if len(instances) != len(ids):
+#                 return Response({"detail": "One or more instances not found."}, status=status.HTTP_404_NOT_FOUND)
+#
+#             serializer.update(instances, serializer.validated_data)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#
+# class UserQuestQuestionAttemptByUserQuestAttemptView(generics.ListAPIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = UserQuestQuestionAttemptSerializer
+#
+#     def get_queryset(self):
+#         user_quest_attempt_id = self.kwargs['user_quest_attempt_id']
+#         return UserQuestQuestionAttempt.objects.filter(user_quest_attempt=user_quest_attempt_id).order_by('question__number')
+#
+#
+# class AttemptAnswerRecordListCreateView(generics.ListCreateAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = AttemptAnswerRecord.objects.all().order_by('-id')
+#     serializer_class = AttemptAnswerRecordSerializer
+#
+#
+# class AttemptAnswerRecordManageView(generics.RetrieveUpdateDestroyAPIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     queryset = AttemptAnswerRecord.objects.all().order_by('-id')
+#     serializer_class = AttemptAnswerRecordSerializer
 
 
 
@@ -831,7 +1204,7 @@ class AnalyticsPartTwoView(APIView):
         course_quest_completion = []
         for user_course in user_courses:
             course_id = user_course.course.id
-            quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest__from_course=course_id, all_questions_submitted=True).distinct('quest')
+            quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest__from_course=course_id, submitted=True).distinct('quest')
             completed_quests = quest_attempts.count()
             total_quests = user_course.course.quests.count()
             completion_ratio = completed_quests / total_quests if total_quests > 0 else 0
