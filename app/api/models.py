@@ -5,6 +5,7 @@ from django.utils.text import slugify
 from .utils import split_full_name
 from django.db.models import Sum
 from storages.backends.azure_storage import AzureStorage
+from django.core.exceptions import ValidationError
 
 class EduquestUser(AbstractUser):
     """
@@ -92,6 +93,16 @@ class Course(models.Model):
     image = models.ForeignKey(Image, on_delete=models.SET_NULL, null=True, blank=True)
     coordinators = models.ManyToManyField(EduquestUser, related_name='coordinated_courses')
 
+    def clean(self):
+        super().clean()
+        # Remove the following block to prevent ValidationError during creation
+        # if not self.pk and not self.coordinators.exists():
+        #     raise ValidationError("A course must have at least one coordinator.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Call the clean method
+        super().save(*args, **kwargs)
+
     def total_students_enrolled(self):
         return UserCourseGroupEnrollment.objects.filter(course_group__course=self).count()
 
@@ -112,7 +123,8 @@ class CourseGroup(models.Model):
     session_time = models.CharField(max_length=100, null=True, blank=True)  # e.g. 10:00 AM - 12:00 PM, 2:30 PM - 4:30 PM
     instructor = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='instructed_course_groups')
 
-
+    def total_students_enrolled(self):
+        return UserCourseGroupEnrollment.objects.filter(course_group=self).count()
 
     def __str__(self):
         return f"Group {self.name} from {self.course.code}"
@@ -157,7 +169,7 @@ class Quest(models.Model):
     description = models.TextField()
     type = models.CharField(max_length=50)  # EduQuest MCQ, Kahoot!, WooClap, Private
     status = models.CharField(max_length=50, default="Active")  # Active, Expired
-    # tutorial_date = models.DateTimeField(null=True, blank=True)
+    tutorial_date = models.DateTimeField(null=True, blank=True)
     expiration_date = models.DateTimeField(null=True, blank=True)
     max_attempts = models.PositiveIntegerField(default=1)
     organiser = models.ForeignKey(EduquestUser, on_delete=models.CASCADE, related_name='quests_organised')
@@ -361,12 +373,12 @@ class UserQuestBadge(models.Model):
     These badges are awarded based on 'quest' related conditions
     """
     badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='awarded_to_quest_attempt')
-    quest_attempted = models.ForeignKey(UserQuestAttempt, on_delete=models.CASCADE, related_name='earned_quest_badges')
+    user_quest_attempt = models.ForeignKey(UserQuestAttempt, on_delete=models.CASCADE, related_name='earned_quest_badges')
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return (f"{self.quest_attempted.user.username} earned {self.badge.name} from Quest "
-                f"{self.quest_attempted.quest.name}")
+        return (f"{self.user_quest_attempt.user.username} earned {self.badge.name} from Quest "
+                f"{self.user_quest_attempt.quest.name}")
 
 
 class Document(models.Model):
