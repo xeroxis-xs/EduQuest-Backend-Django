@@ -342,7 +342,7 @@ class QuestSerializer(serializers.ModelSerializer):
 
 
 class AnswerSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField()  # Make 'id' writeable
+    id = serializers.IntegerField(required=False)  # Make 'id' writeable
     class Meta:
         model = Answer
         fields = ['id', 'text', 'is_correct', 'reason']
@@ -352,7 +352,7 @@ class QuestionSerializer(serializers.ModelSerializer):
     quest_id = serializers.PrimaryKeyRelatedField(
         queryset=Quest.objects.all(),
         source='quest',
-        write_only=True
+        # write_only=True
     )
     # Nested serializer for answers
     answers = AnswerSerializer(many=True)
@@ -512,15 +512,15 @@ class UserAnswerAttemptSerializer(serializers.ModelSerializer):
     question_id = serializers.PrimaryKeyRelatedField(
         queryset=Question.objects.all(),
         source='question',
-        # write_only=True
+        write_only=True
     )
     answer_id = serializers.PrimaryKeyRelatedField(
         queryset=Answer.objects.all(),
         source='answer',
-        # write_only=True
+        write_only=True
     )
-    # question = QuestionSerializer(read_only=True)
-    # answer = AnswerSerializer(read_only=True)
+    question = QuestionSerializer(read_only=True)
+    answer = AnswerSerializer(read_only=True)
 
     class Meta:
         model = UserAnswerAttempt
@@ -528,13 +528,13 @@ class UserAnswerAttemptSerializer(serializers.ModelSerializer):
             'id',
             'user_quest_attempt_id',
             'question_id',
-            # 'question',
+            'question',
             'answer_id',
-            # 'answer',
+            'answer',
             'is_selected',
             'score_achieved'
         ]
-        read_only_fields = ['score_achieved']  # Score is calculated and shouldn't be set directly
+        # read_only_fields = ['score_achieved']  # Score is calculated and shouldn't be set directly
 
     def create(self, validated_data):
         return UserAnswerAttempt.objects.create(**validated_data)
@@ -542,6 +542,7 @@ class UserAnswerAttemptSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Since foreign keys shouldn't change, we don't need to update them
         instance.is_selected = validated_data.get('is_selected', instance.is_selected)
+        instance.score_achieved = validated_data.get('score_achieved', instance.score_achieved)
         instance.save()
         return instance
 

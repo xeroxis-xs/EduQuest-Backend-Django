@@ -11,6 +11,7 @@ services:
       - ./app:/app
     command: sh -c "python manage.py runserver 0.0.0.0:8000"
     environment:
+      - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=127.0.0.1,localhost
       - DB_NAME=${DB_NAME}
@@ -21,6 +22,8 @@ services:
       - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - DEBUG=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   celery:
     build:
@@ -30,6 +33,7 @@ services:
       - ./app:/app
     command: sh -c "celery -A core worker --loglevel=info"
     environment:
+      - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=127.0.0.1,localhost
       - DB_NAME=${DB_NAME}
@@ -41,6 +45,7 @@ services:
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - DEBUG=1
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   celery-beat:
     build:
@@ -50,6 +55,7 @@ services:
       - ./app:/app
     command: sh -c "celery -A core beat --loglevel=info"
     environment:
+      - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=127.0.0.1,localhost
       - DB_NAME=${DB_NAME}
@@ -61,6 +67,7 @@ services:
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - DEBUG=1
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   redis:
     image: "redis:alpine"

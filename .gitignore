@@ -22,3 +22,8 @@ venv/
 
 # .env file
 .env
+
+# Celery Beat schedule files
+app/celerybeat-schedule.bak
+app/celerybeat-schedule.dat
+app/celerybeat-schedule.dir

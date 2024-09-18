@@ -1,6 +1,20 @@
+import logging
 from celery import shared_task
 from django.utils import timezone
 from django.db.models import Max
+
+# Configure the logger
+logger = logging.getLogger(__name__)
+
+@shared_task
+def test_task():
+    """
+    A test task to check if Celery is working.
+    Alternatively, use "env | grep CELERY" inside the celery container to check if the environment variables are set.
+    """
+    logger.info("Test task is being processed.")
+    return "Task Completed"
+
 
 @shared_task
 def check_expired_quest():
@@ -53,16 +67,16 @@ def award_first_attempt_badge(user_quest_attempt_id):
                 quest_attempted=attempt
             )
             if created:
-                print(f"[First Attempt] Badge awarded to user: {user.username}")
+                logger.info(f"[First Attempt] Badge awarded to user: {user.username}")
             else:
-                print(f"[First Attempt] User: {user.username} already has the badge")
+                logger.info(f"[First Attempt] User: {user.username} already has the badge")
         else:
-            print(f"[First Attempt] User: {user.username} already has the badge")
+            logger.info(f"[First Attempt] User: {user.username} already has the badge")
 
     except UserQuestAttempt.DoesNotExist:
-        print(f"[First Attempt] UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
+        logger.info(f"[First Attempt] UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
     except Badge.DoesNotExist:
-        print("[First Attempt] Badge 'First Attempt' does not exist.")
+        logger.info("[First Attempt] Badge 'First Attempt' does not exist.")
 
 @shared_task
 def award_perfectionist_badge(user_quest_attempt_id):
@@ -93,18 +107,18 @@ def award_perfectionist_badge(user_quest_attempt_id):
                 quest_attempted=attempt
             )
             if created:
-                print(f"[Perfectionist] Badge awarded to user: {attempt.student.username}")
+                logger.info(f"[Perfectionist] Badge awarded to user: {attempt.student.username}")
             else:
-                print(f"[Perfectionist] User: {attempt.student.username} already has the badge for this quest")
+                logger.info(f"[Perfectionist] User: {attempt.student.username} already has the badge for this quest")
         else:
-            print(f"[Perfectionist] User: {attempt.student.username} did not achieve full marks")
+            logger.info(f"[Perfectionist] User: {attempt.student.username} did not achieve full marks")
 
     except UserQuestAttempt.DoesNotExist:
-        print(f"[Perfectionist] UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
+        logger.info(f"[Perfectionist] UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
     except Badge.DoesNotExist:
-        print("[Perfectionist] Badge 'Perfectionist' does not exist.")
+        logger.info("[Perfectionist] Badge 'Perfectionist' does not exist.")
     except Quest.DoesNotExist:
-        print(f"[Perfectionist] Quest for UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
+        logger.info(f"[Perfectionist] Quest for UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
 
 
 @shared_task
@@ -126,7 +140,7 @@ def award_speedster_badge(quest_id):
         ).exclude(first_attempted_date=None, last_attempted_date=None)
 
         if not user_quest_attempts.exists():
-            print(f"[Speedster] No eligible attempts for quest: {quest.name}")
+            logger.info(f"[Speedster] No eligible attempts for quest: {quest.name}")
             return
 
         # Filter out attempts with zero or negative time_taken
@@ -135,20 +149,20 @@ def award_speedster_badge(quest_id):
         ]
 
         if not filtered_attempts:
-            print(f"[Speedster] No attempts with valid time_taken for quest: {quest.name}")
+            logger.info(f"[Speedster] No attempts with valid time_taken for quest: {quest.name}")
             return
 
         # Find the fastest attempt
         fastest_attempt = min(filtered_attempts, key=lambda x: x.time_taken)
         fastest_attempt_score = fastest_attempt.total_score_achieved
 
-        print(f"[Speedster] Fastest attempt for quest: {quest.name} is by user: {fastest_attempt.student.username} with score: {fastest_attempt_score}")
+        logger.info(f"[Speedster] Fastest attempt for quest: {quest.name} is by user: {fastest_attempt.student.username} with score: {fastest_attempt_score}")
 
         # Get top three unique scores
         unique_scores = user_quest_attempts.values_list('total_score_achieved', flat=True).distinct().order_by('-total_score_achieved')[:3]
         top_three_scores = list(unique_scores)
 
-        print(f"[Speedster] Top three scores for quest: {quest.name} are: {top_three_scores}")
+        logger.info(f"[Speedster] Top three scores for quest: {quest.name} are: {top_three_scores}")
 
         if fastest_attempt_score in top_three_scores:
             badge, created = UserQuestBadge.objects.get_or_create(
@@ -156,14 +170,14 @@ def award_speedster_badge(quest_id):
                 quest_attempted=fastest_attempt
             )
             if created:
-                print(f"[Speedster] Badge awarded to user: {fastest_attempt.student.username}")
+                logger.info(f"[Speedster] Badge awarded to user: {fastest_attempt.student.username}")
             else:
-                print(f"[Speedster] User: {fastest_attempt.student.username} already has the badge.")
+                logger.info(f"[Speedster] User: {fastest_attempt.student.username} already has the badge.")
         else:
-            print(f"[Speedster] Fastest user is not among the top three scorers for quest: {quest.name}")
+            logger.info(f"[Speedster] Fastest user is not among the top three scorers for quest: {quest.name}")
 
     except Quest.DoesNotExist:
-        print(f"[Speedster] Quest with id {quest_id} does not exist.")
+        logger.info(f"[Speedster] Quest with id {quest_id} does not exist.")
 
 
 @shared_task
@@ -186,7 +200,7 @@ def award_expert_badge(quest_id):
         user_quest_attempts = UserQuestAttempt.objects.filter(quest=quest)
 
         if not user_quest_attempts.exists():
-            print(f"[Expert] No attempts found for quest: {quest.name}")
+            logger.info(f"[Expert] No attempts found for quest: {quest.name}")
             return
 
         # Find the highest score
@@ -195,17 +209,17 @@ def award_expert_badge(quest_id):
         )['max_score'] or 0
 
         if highest_score <= 0:
-            print(f"[Expert] No user scored above 0 for quest: {quest.name}")
+            logger.info(f"[Expert] No user scored above 0 for quest: {quest.name}")
             return
 
         # Get all attempts with the highest score
         top_attempts = user_quest_attempts.filter(total_score_achieved=highest_score)
 
         badge = Badge.objects.get(name="Expert")
-        print(f"[Expert] Highest score for quest: {quest.name} is: {highest_score}")
+        logger.info(f"[Expert] Highest score for quest: {quest.name} is: {highest_score}")
 
         if top_attempts.count() == 0:
-            print(f"[Expert] No attempts with the highest score for quest: {quest.name}")
+            logger.info(f"[Expert] No attempts with the highest score for quest: {quest.name}")
             return
 
         for attempt in top_attempts:
@@ -214,14 +228,14 @@ def award_expert_badge(quest_id):
                 quest_attempted=attempt
             )
             if created:
-                print(f"[Expert] Badge awarded to user: {attempt.student.username}")
+                logger.info(f"[Expert] Badge awarded to user: {attempt.student.username}")
             else:
-                print(f"[Expert] User: {attempt.student.username} already has the badge for this quest")
+                logger.info(f"[Expert] User: {attempt.student.username} already has the badge for this quest")
 
     except Quest.DoesNotExist:
-        print(f"[Expert] Quest with id {quest_id} does not exist.")
+        logger.info(f"[Expert] Quest with id {quest_id} does not exist.")
     except Badge.DoesNotExist:
-        print("[Expert] Badge 'Expert' does not exist.")
+        logger.info("[Expert] Badge 'Expert' does not exist.")
 
 
 @shared_task
@@ -246,15 +260,15 @@ def award_completionist_badge(user_course_group_enrollment_id):
             user_course_group_enrollment=user_course_group_enrollment
         )
         if created:
-            print(f"[Completionist] Badge awarded to user: {user.username} for completing course group: {course_group.name}")
+            logger.info(f"[Completionist] Badge awarded to user: {user.username} for completing course group: {course_group.name}")
         else:
-            print(f"[Completionist] User: {user.username} already has the badge for course group: {course_group.name}")
+            logger.info(f"[Completionist] User: {user.username} already has the badge for course group: {course_group.name}")
     except UserCourseGroupEnrollment.DoesNotExist:
-        print(f"[Completionist] UserCourseGroupEnrollment with id {user_course_group_enrollment_id} does not exist.")
+        logger.info(f"[Completionist] UserCourseGroupEnrollment with id {user_course_group_enrollment_id} does not exist.")
     except Badge.DoesNotExist:
-        print("[Completionist] Badge 'Completionist' does not exist.")
+        logger.info("[Completionist] Badge 'Completionist' does not exist.")
     except Exception as e:
-        print(f"[Completionist] Error: {e}")
+        logger.info(f"[Completionist] Error: {e}")
 
 
 @shared_task
@@ -314,16 +328,16 @@ def check_course_completion_and_update_enrollment(user_quest_attempt_id):
             # User has completed all quests
             user_course_group_enrollment.completed_on = timezone.now()
             user_course_group_enrollment.save()
-            print(f"[Course Completion Check] User {user.username} has completed the course group {course_group.name}")
+            logger.info(f"[Course Completion Check] User {user.username} has completed the course group {course_group.name}")
         else:
-            print(f"[Course Completion Check] User {user.username} has not yet completed all quests in course group {course_group.name}")
+            logger.info(f"[Course Completion Check] User {user.username} has not yet completed all quests in course group {course_group.name}")
     except Exception as e:
-        print(f"[Course Completion Check] Error in check_course_completion_and_update_enrollment: {e}")
+        logger.info(f"[Course Completion Check] Error in check_course_completion_and_update_enrollment: {e}")
 
 @shared_task
-def update_user_quest_attempt_score_and_points_task(user_quest_attempt_id):
+def update_points_task(user_quest_attempt_id):
     """
-    Task to calculate total score achieved for a quest attempt and update the user's total points.
+    Task update the user's total points.
     """
     from django.db import transaction
     from django.db.models import Max
@@ -354,9 +368,9 @@ def update_user_quest_attempt_score_and_points_task(user_quest_attempt_id):
                 points_to_add = total_score_achieved - highest_score_achieved
                 instance.student.total_points += points_to_add
                 instance.student.save(update_fields=['total_points'])
-                print(f"[Update User Points] User {instance.student.username} earned {points_to_add} points for quest attempt {instance.id}")
+                logger.info(f"[Update User Points] User {instance.student.username} earned {points_to_add} points for quest attempt {instance.id}")
 
     except UserQuestAttempt.DoesNotExist:
-        print(f"[Error] UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
+        logger.info(f"[Error] UserQuestAttempt with id {user_quest_attempt_id} does not exist.")
     except Exception as e:
-        print(f"[Error] Failed to update score and points for UserQuestAttempt {user_quest_attempt_id}: {e}")
+        logger.info(f"[Error] Failed to update score and points for UserQuestAttempt {user_quest_attempt_id}: {e}")

@@ -7,6 +7,7 @@ services:
       - "8000:8000"
     command: gunicorn core.wsgi:application -b 0.0.0.0:8000
     environment:
+      - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - DB_NAME=${DB_NAME}
@@ -16,11 +17,14 @@ services:
       - DB_PORT=${DB_PORT}
       - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   celery:
     image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
     command: celery -A core worker --loglevel=info
     environment:
+      - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - DB_NAME=${DB_NAME}
@@ -31,11 +35,13 @@ services:
       - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   celery-beat:
     image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
     command: celery -A core beat --loglevel=info
     environment:
+      - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - DB_NAME=${DB_NAME}
@@ -46,6 +52,7 @@ services:
       - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
       - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   redis:
     image: "redis:alpine"

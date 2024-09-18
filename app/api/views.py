@@ -133,10 +133,20 @@ class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['get'])
+    def by_course_group_and_user(self, request):
+        course_group_id = request.query_params.get('course_group_id')
+        user_id = request.query_params.get('user_id')
+        queryset = UserCourseGroupEnrollment.objects.filter(course_group=course_group_id, student=user_id).order_by(
+            '-id')
+        serializer = UserCourseGroupEnrollmentSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
     def by_course_and_user(self, request):
         course_id = request.query_params.get('course_id')
         user_id = request.query_params.get('user_id')
-        queryset = UserCourseGroupEnrollment.objects.filter(course_group__course=course_id, student=user_id).order_by('-id')
+        queryset = UserCourseGroupEnrollment.objects.filter(course_group__course=course_id, student=user_id).order_by(
+            '-id')
         serializer = UserCourseGroupEnrollmentSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -280,7 +290,7 @@ class QuestViewSet(viewsets.ModelViewSet):
                         else:
                             return Response(data={
                                 "Error creating user answer attempts": user_answer_attempt_serializer.errors},
-                                            status=status.HTTP_400_BAD_REQUEST)
+                                status=status.HTTP_400_BAD_REQUEST)
 
                 user_answer_attempts = UserAnswerAttempt.objects.filter(
                     user_quest_attempt=new_user_quest_attempt_id)
@@ -398,6 +408,7 @@ class AnswerViewSet(viewsets.ModelViewSet):
         output_serializer = self.get_serializer(updated_answers, many=True)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
 
+
 class UserQuestAttemptViewSet(viewsets.ModelViewSet):
     queryset = UserQuestAttempt.objects.all().order_by('-id')
     serializer_class = UserQuestAttemptSerializer
@@ -434,7 +445,8 @@ class UserQuestAttemptViewSet(viewsets.ModelViewSet):
                     # Retrieve the instance to update
                     attempt_instance = UserQuestAttempt.objects.get(id=attempt_id)
                 except UserQuestAttempt.DoesNotExist:
-                    return Response({"error": f"UserQuestAttempt with id {attempt_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"error": f"UserQuestAttempt with id {attempt_id} not found."},
+                                    status=status.HTTP_404_NOT_FOUND)
 
                 # Use the existing serializer for each update
                 serializer = self.get_serializer(instance=attempt_instance, data=attempt_data, partial=True)
@@ -484,7 +496,8 @@ class UserAnswerAttemptViewSet(viewsets.ModelViewSet):
                     # Retrieve the instance to update
                     attempt_instance = UserAnswerAttempt.objects.get(id=attempt_id)
                 except UserAnswerAttempt.DoesNotExist:
-                    return Response({"error": f"UserAnswerAttempt with id {attempt_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"error": f"UserAnswerAttempt with id {attempt_id} not found."},
+                                    status=status.HTTP_404_NOT_FOUND)
 
                 # Use the existing serializer for each update
                 serializer = self.get_serializer(instance=attempt_instance, data=attempt_data, partial=True)
@@ -521,7 +534,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all().order_by('-id')
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
-
 
 
 #
@@ -1156,12 +1168,15 @@ class AnalyticsPartOneView(APIView):
         total_enrollments = UserCourseGroupEnrollment.objects.exclude(course__type="Private").count()
         new_enrollments_last_week = UserCourseGroupEnrollment.objects.exclude(course__type="Private").filter(
             enrolled_on__gte=last_week).count()
-        new_enrollments_percentage = (new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
+        new_enrollments_percentage = (
+                                                 new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
 
         # 3. Total number of quest attempts and new attempts since last week
         total_quest_attempts = UserQuestAttempt.objects.exclude(quest__type="Private").count()
-        new_quest_attempts_last_week = UserQuestAttempt.objects.exclude(quest__type="Private").filter(first_attempted_on__gte=last_week).count()
-        new_quest_attempts_percentage = (new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
+        new_quest_attempts_last_week = UserQuestAttempt.objects.exclude(quest__type="Private").filter(
+            first_attempted_on__gte=last_week).count()
+        new_quest_attempts_percentage = (
+                                                    new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
 
         # 4. User with the shortest non-zero time_taken and perfect score
         # Filter UserQuestBadge for users with the "Perfectionist" badge
@@ -1179,7 +1194,8 @@ class AnalyticsPartOneView(APIView):
         if perfectionist_badge_attempts:
             shortest_time_user = {
                 'nickname': perfectionist_badge_attempts.quest_attempted.user.nickname,
-                'time_taken': int(perfectionist_badge_attempts.time_taken.total_seconds() * 1000),  # Convert to milliseconds and round to whole number
+                'time_taken': int(perfectionist_badge_attempts.time_taken.total_seconds() * 1000),
+                # Convert to milliseconds and round to whole number
                 'quest_id': perfectionist_badge_attempts.quest_attempted.quest.id,
                 'quest_name': perfectionist_badge_attempts.quest_attempted.quest.name,
                 'course': f"{perfectionist_badge_attempts.quest_attempted.quest.from_course.code} {perfectionist_badge_attempts.quest_attempted.quest.from_course.name}"
@@ -1219,7 +1235,8 @@ class AnalyticsPartTwoView(APIView):
         course_quest_completion = []
         for user_course in user_courses:
             course_id = user_course.course.id
-            quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest__from_course=course_id, submitted=True).distinct('quest')
+            quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest__from_course=course_id,
+                                                             submitted=True).distinct('quest')
             completed_quests = quest_attempts.count()
             total_quests = user_course.course.quests.count()
             completion_ratio = completed_quests / total_quests if total_quests > 0 else 0
@@ -1291,6 +1308,7 @@ class AnalyticsPartTwoView(APIView):
 
 class AnalyticsPartThreeView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request, *args, **kwargs):
         # Fetch top 5 users with the most badges with quest badge and course badge combined
         # Get all badges awarded to users and count the number of badges
@@ -1398,7 +1416,3 @@ class AnalyticsPartThreeView(APIView):
         }
 
         return Response(data)
-
-
-
-

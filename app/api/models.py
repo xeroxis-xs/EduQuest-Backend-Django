@@ -247,37 +247,9 @@ class UserQuestAttempt(models.Model):
     def calculate_total_score_achieved(self):
         """
         Calculate the total score achieved by the user for the quest
-        Set the score_achieved for each answer attempt
+        Sum up the score_achieved for all UserAnswerAttempt instances
         """
-        total_score = 0
-        user_answer_attempts_to_update = []
-        questions = self.quest.questions.all()
-        for question in questions:
-            answers = question.answers.all()
-            num_options = answers.count()
-            if num_options == 0:
-                continue  # Avoid division by zero
-            weight_per_option = question.max_score / num_options
-
-            # Get user's answer attempts for this question
-            user_answers = self.answer_attempts.filter(question=question)
-
-            question_score = 0
-            for ua in user_answers:
-                is_correct = ua.answer.is_correct
-                is_selected = ua.is_selected
-                if is_selected == is_correct:
-                    ua.score_achieved = weight_per_option
-                    question_score += weight_per_option
-                else:
-                    ua.score_achieved = 0
-                # Collect instances to update later
-                user_answer_attempts_to_update.append(ua)
-
-            total_score += question_score
-
-        # Bulk update the score_achieved field for all UserAnswerAttempt instances
-        UserAnswerAttempt.objects.bulk_update(user_answer_attempts_to_update, ['score_achieved'])
+        total_score = self.answer_attempts.aggregate(total_score=Sum('score_achieved'))['total_score'] or 0
 
         return total_score
 
@@ -305,13 +277,12 @@ class UserQuestAttempt(models.Model):
         if (is_new_instance and self.submitted) or (old_submitted_value == False and self.submitted == True):
             # Import tasks locally to avoid circular import
             from .tasks import (award_perfectionist_badge, award_first_attempt_badge,
-                                check_course_completion_and_update_enrollment,
-                                update_user_quest_attempt_score_and_points_task)
+                                check_course_completion_and_update_enrollment, update_points_task)
             # Trigger all tasks
             award_perfectionist_badge.delay(self.id)
             award_first_attempt_badge.delay(self.id)
             check_course_completion_and_update_enrollment.delay(self.id)
-            update_user_quest_attempt_score_and_points_task.delay(self.id)
+            update_points_task.delay(self.id)
 
 
 class UserAnswerAttempt(models.Model):

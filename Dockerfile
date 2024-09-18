@@ -8,16 +8,21 @@ ENV PYTHONUNBUFFERED 1
 # Set environment variable for secret key
 ENV SECRET_KEY=my_secret_key_placeholder
 
-# Lightweight container
+# Install dependencies
 COPY ./requirements.txt /requirements.txt
 RUN apk add --update --no-cache --virtual .tmp gcc libc-dev linux-headers
 RUN pip install -r /requirements.txt
 RUN apk del .tmp
 
+# Install redis-cli
+RUN apk add --no-cache redis
+
+# Set up application directory
 RUN mkdir /app
 COPY ./app /app
 WORKDIR /app
 
+# Collect static files
 RUN python manage.py collectstatic --noinput
 
 # Run Gunicorn
