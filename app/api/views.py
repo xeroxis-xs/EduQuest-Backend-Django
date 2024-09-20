@@ -1,13 +1,15 @@
+from django.db import transaction
 from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import JsonResponse
 from datetime import timedelta
-from django.db.models import Count
+from django.db.models import Count, Q, Max, Avg, Prefetch
 from .excel import Excel
 from rest_framework.response import Response
 from rest_framework import status
@@ -113,6 +115,22 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer = CourseSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def by_enrolled_user(self, request):
+        user_id = request.query_params.get('user_id')
+        # Get the course group enrollments for the given user
+        course_group_enrollments = UserCourseGroupEnrollment.objects.filter(student_id=user_id)
+        # Extract the course IDs from the related course groups
+        course_ids = CourseGroup.objects.filter(
+            id__in=course_group_enrollments.values_list('course_group', flat=True)
+        ).values_list('course_id', flat=True)
+        # Query the courses excluding Private courses
+        queryset = Course.objects.exclude(type='Private').filter(id__in=course_ids).order_by('-id')
+
+        # Serialize the results
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class CourseGroupViewSet(viewsets.ModelViewSet):
     queryset = CourseGroup.objects.all().order_by('-id')
@@ -123,6 +141,12 @@ class CourseGroupViewSet(viewsets.ModelViewSet):
     def by_course(self, request):
         course_id = request.query_params.get('course_id')
         queryset = CourseGroup.objects.filter(course=course_id).order_by('-id')
+        serializer = CourseGroupSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_private_course(self, request):
+        queryset = CourseGroup.objects.filter(course__type='Private').order_by('-id')
         serializer = CourseGroupSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -190,154 +214,121 @@ class QuestViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def import_quest(self, request):
-        excel_file = request.FILES.get('file')
+        try:
+            excel_file = request.FILES.get('file')
+        except Exception as e:
+            return Response(
+                {"Error processing excel file": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if not excel_file:
-            return JsonResponse(data={"No file provided, please try again"}, status=400)
+            return Response(
+                {"No file provided, please try again"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             excel = Excel()
             excel.read_excel_sheets(excel_file)
             questions_data = excel.get_questions()
             users_data = excel.get_users()
         except Exception as e:
-            return JsonResponse(data={"Error processing excel file": str(e)}, status=400)
+            return Response(
+                {"Error processing excel file": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Extract other form data
-        quest_data = {
-            'type': request.data.get('type'),
-            'name': request.data.get('name'),
-            'description': request.data.get('description'),
-            'status': request.data.get('status'),
-            'max_attempts': request.data.get('max_attempts'),
-            'course_group_id': request.data.get('course_group_id'),
-            'image_id': request.data.get('image_id'),
-            'organiser_id': request.data.get('organiser_id')
-        }
-        # Create a Quest object
-        quest_serializer = QuestSerializer(data=quest_data)
+        try:
+            # Extract other form data
+            quest_data = {
+                'type': request.data.get('type'),
+                'name': request.data.get('name'),
+                'description': request.data.get('description'),
+                'status': request.data.get('status'),
+                'max_attempts': request.data.get('max_attempts'),
+                'course_group_id': request.data.get('course_group_id'),
+                'image_id': request.data.get('image_id'),
+                'organiser_id': request.data.get('organiser_id')
+            }
+        except Exception as e:
+            return Response(
+                {"Error extracting form data": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if quest_serializer.is_valid():
-            # Save the Quest object
-            quest_serializer.save()
-            # Get the ID of the newly created Quest object
-            new_quest_id = quest_serializer.data.get('id')
-            print(f"New Quest ID: {new_quest_id}")
-            course_group = quest_serializer.data.get('course_group')
+        # Use atomic transaction to ensure data integrity
+        with transaction.atomic():
+            try:
+                # Create a Quest object
+                quest_serializer = QuestSerializer(data=quest_data)
+                quest_serializer.is_valid(raise_exception=True)
+                quest = quest_serializer.save()
+                new_quest_id = quest.id
+                course_group = quest_serializer.data.get('course_group')
 
-            questions_serializer = []
-            # Process each question in the questions_data list
-            for question_data in questions_data:
-                print(f"Question data: {question_data}")
-                # Extract question data
-                question_data['quest_id'] = new_quest_id
-                # Create a Question object for each question
-                question_serializer = QuestionSerializer(data=question_data)
-                if question_serializer.is_valid():
-                    question_serializer.save()
-                    # Return the question data
+                questions_serializer = []
+                # Process each question in the questions_data list
+                for question_data in questions_data:
+                    question_data['quest_id'] = new_quest_id
+                    question_serializer = QuestionSerializer(data=question_data)
+                    question_serializer.is_valid(raise_exception=True)
+                    question = question_serializer.save()
                     questions_serializer.append(question_serializer.data)
-                else:
-                    return Response(data={"Error creating questions": question_serializer.errors},
-                                    status=status.HTTP_400_BAD_REQUEST)
-            #
-            # Create UserQuestAttempt object (auto-generate UserAnswerAttempt objects)
-            for user_data in users_data:
-                # Create a User object
-                user, created = EduquestUser.objects.get_or_create(
-                    email=user_data['email'],
-                    defaults={
-                        'email': user_data['email'],
-                        'username': user_data['username'],
-                        'nickname': user_data['username']
-                    }
-                )
-                # Enroll the users in the course_group if they are not already enrolled
-                UserCourseGroupEnrollment.objects.get_or_create(
-                    student_id=user.id,
-                    course_group_id=course_group['id']
-                )
-                #
-                # Create a UserQuestAttempt object for each User
-                user_quest_attempt_data = {
-                    'student_id': user.id,
-                    'quest_id': new_quest_id
-                }
-                user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
-                if user_quest_attempt_serializer.is_valid():
-                    user_quest_attempt_serializer.save()
-                    # Get the ID of the newly created UserQuestAttempt object
-                    new_user_quest_attempt_id = user_quest_attempt_serializer.data.get('id')
-                    print(f"New UserQuestAttempt ID: {new_user_quest_attempt_id}")
-                    # print(f"User question attempts: {user_question_attempts}")
-                else:
-                    return Response(
-                        data={"Error user quest attempt template": user_quest_attempt_serializer.errors},
-                        status=status.HTTP_400_BAD_REQUEST)
 
-                # Create UserAnswerAttempt objects for each UserQuestAttempt
-                for question_serializer in questions_serializer:
-                    # Iterate through each answer record in selected_answers
-                    for answer_serializer in question_serializer['answers']:
-                        user_answer_attempt_data = {
-                            'user_quest_attempt_id': new_user_quest_attempt_id,
-                            'question_id': question_serializer['id'],
-                            'answer_id': answer_serializer['id'],
-                            'is_selected': False
+                # Enroll users and create UserQuestAttempt and UserAnswerAttempt objects
+                for user_data in users_data:
+                    user, created = EduquestUser.objects.get_or_create(
+                        email=user_data['email'],
+                        defaults={
+                            'email': user_data['email'],
+                            'username': user_data['username'],
+                            'nickname': user_data['username']
                         }
-                        user_answer_attempt_serializer = UserAnswerAttemptSerializer(
-                            data=user_answer_attempt_data)
-                        if user_answer_attempt_serializer.is_valid():
-                            user_answer_attempt_serializer.save()
-                        else:
-                            return Response(data={
-                                "Error creating user answer attempts": user_answer_attempt_serializer.errors},
-                                status=status.HTTP_400_BAD_REQUEST)
+                    )
 
-                user_answer_attempts = UserAnswerAttempt.objects.filter(
-                    user_quest_attempt=new_user_quest_attempt_id)
-                try:
-                    # Iterate through each user_answer_attempts question
-                    for user_answer_attempt in user_answer_attempts:
-                        print(f"User question attempt: {user_answer_attempt.question.text}")
-                        # Get the wooclap_questions_selected_answers for the user
-                        print(f"User: {user.email}")
-                        wooclap_questions_selected_answers = excel.get_user_answer_attempts(user.email)
-                        print(f"Wooclap questions selected answers: {wooclap_questions_selected_answers}")
-                        # Iterate through each wooclap_question_selected_answers
-                        for wooclap_question_selected_answers in wooclap_questions_selected_answers:
-                            # print(f"Wooclap question selected answers: {wooclap_question_selected_answers}")
-                            # If the question in the wooclap_question_selected_answers matches
-                            # the user_question_attempt question
-                            """
-                            wooclap_question_selected_answers
-                            {
-                                'question': 'What is the primary key in a database?',
-                                'selected_answers': ['A field in a table that uniquely identifies each row']
-                            }
-                            """
-                            if wooclap_question_selected_answers[
-                                'question'] == user_answer_attempt.question.text:
+                    # Enroll the user in the course group
+                    enrollment, enrolled = UserCourseGroupEnrollment.objects.get_or_create(
+                        student=user,
+                        course_group_id=course_group['id']
+                    )
 
-                                #                                 # Get the AttemptAnswerRecord objects for the user_question_attempt
-                                #                                 answer_records = AttemptAnswerRecord.objects.filter(user_quest_question_attempt=user_question_attempt.id)
-                                #
-                                # Iterate through each answer record in selected_answers
-                                for wooclap_selected_answer in wooclap_question_selected_answers[
-                                    'selected_answers']:
-                                    # Iterate through each 'empty' attempted answer records in the system
-                                    #                                     for answer_record in answer_records:
-                                    # If the answer in the user_answer_attempt  matches the selected answer in wooclap
-                                    if user_answer_attempt.answer.text == wooclap_selected_answer:
-                                        # print(f"Selected answer: {selected_answer.answer.text}")
+                    # Create a UserQuestAttempt object
+                    user_quest_attempt_data = {
+                        'student_id': user.id,
+                        'quest_id': new_quest_id
+                    }
+                    user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
+                    user_quest_attempt_serializer.is_valid(raise_exception=True)
+                    user_quest_attempt = user_quest_attempt_serializer.save()
+                    new_user_quest_attempt_id = user_quest_attempt.id
+
+                    # Get the generated empty-prefilled UserAnswerAttempt objects for the UserQuestAttempt
+                    user_answer_attempts = UserAnswerAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
+                    # Update selected answers based on Excel data
+                    try:
+                        for user_answer_attempt in user_answer_attempts:
+                            selected_answers = excel.get_user_answer_attempts(user.email)
+                            for selected_answer in selected_answers:
+                                if selected_answer['question'] == user_answer_attempt.question.text:
+                                    if user_answer_attempt.answer.text in selected_answer['selected_answers']:
                                         user_answer_attempt.is_selected = True
                                         user_answer_attempt.save()
-                except Exception as e:
-                    return Response(data={"Error updating selected answers": str(e)},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                    except Exception as e:
+                        raise ValidationError({"Error updating selected answers": str(e)})
 
-            return Response(questions_serializer, status=status.HTTP_201_CREATED)
-        else:
-            return Response(data={"Error creating quest": quest_serializer.errors},
-                            status=status.HTTP_400_BAD_REQUEST)
+            except ValidationError as ve:
+                return Response(
+                    {"Validation Error": ve.detail},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except Exception as e:
+                return Response(
+                    {"Error creating quest": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return Response(questions_serializer, status=status.HTTP_201_CREATED)
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
@@ -428,6 +419,16 @@ class UserQuestAttemptViewSet(viewsets.ModelViewSet):
         queryset = UserQuestAttempt.objects.filter(quest=quest_id).order_by('-id')
         serializer = UserQuestAttemptSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def set_all_attempts_submitted_by_quest(self, request):
+        quest_id = request.query_params.get('quest_id')
+        queryset = UserQuestAttempt.objects.filter(quest=quest_id)
+        for instance in queryset:
+            instance.submitted = True
+            instance.save()
+        return Response({"message": f"All attempts for quest {quest_id} have been marked as submitted."})
+
 
     @action(detail=False, methods=['patch'], url_path='bulk-update')
     def bulk_update(self, request, *args, **kwargs):
@@ -523,17 +524,57 @@ class UserQuestBadgeViewSet(viewsets.ModelViewSet):
     serializer_class = UserQuestBadgeSerializer
     permission_classes = [IsAuthenticated]
 
+    @action(detail=False, methods=['get'])
+    def by_user(self, request):
+        user_id = request.query_params.get('user_id')
+        queryset = UserQuestBadge.objects.filter(user_quest_attempt__student=user_id).order_by('-id')
+        serializer = UserQuestBadgeSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class UserCourseBadgeViewSet(viewsets.ModelViewSet):
     queryset = UserCourseBadge.objects.all().order_by('-id')
     serializer_class = UserCourseBadgeSerializer
     permission_classes = [IsAuthenticated]
 
+    @action(detail=False, methods=['get'])
+    def by_user(self, request):
+        user_id = request.query_params.get('user_id')
+        queryset = UserCourseBadge.objects.filter(user_course_group_enrollment__student=user_id).order_by('-id')
+        serializer = UserCourseBadgeSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all().order_by('-id')
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def by_user(self, request):
+        user_id = request.query_params.get('user_id')
+        queryset = Document.objects.filter(uploaded_by=user_id).order_by('-id')
+        serializer = DocumentSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def upload(self, request):
+        try:
+            file = request.FILES.get('file')
+            if not file:
+                return Response({"No file provided, please try again"}, status=status.HTTP_400_BAD_REQUEST)
+            data = {
+                'uploaded_by': request.user.id,
+                'file': file,
+                'name': request.data.get('name'),
+                'size': request.data.get('size'),
+            }
+            serializer = DocumentSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"Error uploading document": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 #
@@ -1165,18 +1206,16 @@ class AnalyticsPartOneView(APIView):
         new_users_percentage = (new_users_last_week / total_users) * 100 if total_users > 0 else 0
 
         # 2. Total number of course enrollments and new enrollments since last week
-        total_enrollments = UserCourseGroupEnrollment.objects.exclude(course__type="Private").count()
-        new_enrollments_last_week = UserCourseGroupEnrollment.objects.exclude(course__type="Private").filter(
+        total_enrollments = UserCourseGroupEnrollment.objects.exclude(course_group__course__type="Private").count()
+        new_enrollments_last_week = UserCourseGroupEnrollment.objects.exclude(course_group__course__type="Private").filter(
             enrolled_on__gte=last_week).count()
-        new_enrollments_percentage = (
-                                                 new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
+        new_enrollments_percentage = (new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
 
         # 3. Total number of quest attempts and new attempts since last week
         total_quest_attempts = UserQuestAttempt.objects.exclude(quest__type="Private").count()
         new_quest_attempts_last_week = UserQuestAttempt.objects.exclude(quest__type="Private").filter(
-            first_attempted_on__gte=last_week).count()
-        new_quest_attempts_percentage = (
-                                                    new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
+            first_attempted_date__gte=last_week).count()
+        new_quest_attempts_percentage = (new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
 
         # 4. User with the shortest non-zero time_taken and perfect score
         # Filter UserQuestBadge for users with the "Perfectionist" badge
@@ -1184,7 +1223,7 @@ class AnalyticsPartOneView(APIView):
             badge__name="Perfectionist"
         ).annotate(
             time_taken=ExpressionWrapper(
-                F('quest_attempted__last_attempted_on') - F('quest_attempted__first_attempted_on'),
+                F('user_quest_attempt__last_attempted_date') - F('user_quest_attempt__first_attempted_date'),
                 output_field=DurationField()
             )
         ).filter(
@@ -1198,7 +1237,7 @@ class AnalyticsPartOneView(APIView):
                 # Convert to milliseconds and round to whole number
                 'quest_id': perfectionist_badge_attempts.quest_attempted.quest.id,
                 'quest_name': perfectionist_badge_attempts.quest_attempted.quest.name,
-                'course': f"{perfectionist_badge_attempts.quest_attempted.quest.from_course.code} {perfectionist_badge_attempts.quest_attempted.quest.from_course.name}"
+                'course': f"{perfectionist_badge_attempts.quest_attempted.quest.course_group.course.code} {perfectionist_badge_attempts.quest_attempted.quest.course_group.course.name}"
             }
         else:
             shortest_time_user = None
@@ -1226,29 +1265,64 @@ class AnalyticsPartTwoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        user_id = self.kwargs['user_id']
+        user_id = self.request.query_params.get('user_id')
+        option = self.request.query_params.get('option')  # course_progression, badge_progression, or both
 
-        # Fetch a user's enrolled course progression, excluding courses with code "PRIVATE"
-        user_courses = UserCourseGroupEnrollment.objects.filter(user=user_id).exclude(course__name="Private Course")
+        # Validation
+        if not user_id:
+            return Response({"error": "user_id is required in the URL parameters."}, status=400)
+        if not option:
+            return Response({"error": "option is required in the URL parameters."}, status=400)
+        if option not in ['course_progression', 'badge_progression', 'both']:
+            return Response({"error": "option must be either course_progression, badge_progression, or both."}, status=400)
 
-        # Aggregate the number of unique completed quests per course
+        if option == 'course_progression':
+            return self.get_course_progression(user_id)
+        if option == 'badge_progression':
+            return self.get_badge_progression(user_id)
+        if option == 'both':
+            return self.get_course_and_badge_progression(user_id)
+
+    def get_course_progression(self, user_id):
+        # Fetch enrollments with related course and quests in a single query
+        enrollments = UserCourseGroupEnrollment.objects.filter(
+            student_id=user_id
+        ).exclude(
+            course_group__course__name="Private Course"
+        ).select_related('course_group__course').prefetch_related('course_group__quests')
+
         course_quest_completion = []
-        for user_course in user_courses:
-            course_id = user_course.course.id
-            quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest__from_course=course_id,
-                                                             submitted=True).distinct('quest')
+
+        for enrollment in enrollments:
+            course_group = enrollment.course_group
+            course = course_group.course
+
+            quest_attempts = UserQuestAttempt.objects.filter(
+                student_id=user_id,
+                quest__course_group__course_id=course.id,
+                submitted=True
+            ).distinct('quest')
+
             completed_quests = quest_attempts.count()
-            total_quests = user_course.course.quests.count()
+            total_quests = course_group.quests.count()
             completion_ratio = completed_quests / total_quests if total_quests > 0 else 0
 
             # Get the highest score for each quest attempted in the course
             quest_scores = []
-            for quest in user_course.course.quests.all():
-                quest_attempts = UserQuestAttempt.objects.filter(user=user_id, quest=quest)
-                if quest_attempts.exists():
-                    highest_score = quest_attempts.aggregate(highest_score=Sum('total_score_achieved'))['highest_score']
+            for quest in course_group.quests.all():
+                # Fetch all attempts for this quest by the user
+                attempts = UserQuestAttempt.objects.filter(
+                    student_id=user_id,
+                    quest=quest
+                )
+                if attempts.exists():
+                    # Aggregate the highest score achieved across all attempts for this quest
+                    highest_score = attempts.aggregate(
+                        highest_score=Sum('total_score_achieved')
+                    )['highest_score'] or 0
                 else:
                     highest_score = 0
+
                 quest_scores.append({
                     'quest_id': quest.id,
                     'quest_name': quest.name,
@@ -1257,53 +1331,46 @@ class AnalyticsPartTwoView(APIView):
                 })
 
             course_quest_completion.append({
-                'course_id': course_id,
-                'course_term': f"AY {user_course.course.term.academic_year.start_year} - {user_course.course.term.academic_year.end_year} {user_course.course.term.name}",
-                'course_code': user_course.course.code,
-                'course_name': user_course.course.name,
+                'course_id': course.id,
+                'course_term': f"AY {course.term.academic_year.start_year} - {course.term.academic_year.end_year} {course.term.name}",
+                'course_code': course.code,
+                'course_name': course.name,
                 'completed_quests': completed_quests,
                 'total_quests': total_quests,
-                'completion_ratio': completion_ratio,
+                'completion_ratio': round(completion_ratio, 2),  # Rounded to 2 decimal places
                 'quest_scores': quest_scores
             })
-
         # Sort the results by completion ratio in descending order
         course_quest_completion.sort(key=lambda x: x['completion_ratio'], reverse=True)
 
-        # Fetch all badges
+        return Response({'user_course_progression': course_quest_completion})
+
+    def get_badge_progression(self, user_id):
         all_badges = Badge.objects.all()
+        user_quest_badges = UserQuestBadge.objects.filter(
+            user_quest_attempt__student_id=user_id
+        ).select_related('badge')
+        user_course_badges = UserCourseBadge.objects.filter(
+            user_course_group_enrollment__student_id=user_id
+        ).select_related('badge')
 
-        # Fetch a user's course badges and quest badges
-        user_quest_badges = UserQuestBadge.objects.filter(quest_attempted__user=user_id)
-        user_course_badges = UserCourseBadge.objects.filter(course_completed__user=user_id)
-
-        # Aggregate the badge data
-        badge_aggregation = {badge.id: {
-            'badge_id': badge.id,
-            'badge_name': badge.name,
-            'badge_filename': badge.image.filename if badge.image else None,
-            'count': 0
-        } for badge in all_badges}
+        badge_aggregation = {badge.id: {'badge_id': badge.id, 'badge_name': badge.name, 'badge_filename': badge.image.filename if badge.image else None, 'count': 0} for badge in all_badges}
 
         for badge in user_quest_badges:
-            badge_id = badge.badge.id
-            badge_aggregation[badge_id]['count'] += 1
+            badge_aggregation[badge.badge.id]['count'] += 1
 
         for badge in user_course_badges:
-            badge_id = badge.badge.id
-            badge_aggregation[badge_id]['count'] += 1
+            badge_aggregation[badge.badge.id]['count'] += 1
 
-        # Exclude badges with a count of 0
-        badge_aggregation = {k: v for k, v in badge_aggregation.items() if v['count'] > 0}
+        badge_aggregation = [v for v in badge_aggregation.values() if v['count'] > 0]
+        sorted_badge_aggregation = sorted(badge_aggregation, key=lambda x: x['count'], reverse=True)
 
-        # Sort the badges by count in descending order
-        sorted_badge_aggregation = sorted(badge_aggregation.values(), key=lambda x: x['count'], reverse=True)
+        return Response({'user_badge_progression': sorted_badge_aggregation})
 
-        data = {
-            'user_course_progression': course_quest_completion,
-            'user_badge_progression': sorted_badge_aggregation
-        }
-        return Response(data)
+    def get_course_and_badge_progression(self, user_id):
+        course_progression = self.get_course_progression(user_id).data
+        badge_progression = self.get_badge_progression(user_id).data
+        return Response({**course_progression, **badge_progression})
 
 
 class AnalyticsPartThreeView(APIView):
@@ -1311,32 +1378,29 @@ class AnalyticsPartThreeView(APIView):
 
     def get(self, request, *args, **kwargs):
         # Fetch top 5 users with the most badges with quest badge and course badge combined
-        # Get all badges awarded to users and count the number of badges
-
         top_users = EduquestUser.objects.annotate(
             quest_badge_count=Count('attempted_quests__earned_quest_badges', distinct=True),
-            course_badge_count=Count('enrolled_courses__earned_course_badges', distinct=True),
+            course_badge_count=Count('enrolled_course_groups__earned_course_badges', distinct=True),
         ).annotate(
             total_badge_count=F('quest_badge_count') + F('course_badge_count')
         ).order_by('-total_badge_count')[:5]
 
-        quest_badges = UserQuestBadge.objects.all().order_by('-id')
-        course_badges = UserCourseBadge.objects.all().order_by('-id')
+        # Prefetch related badges to reduce database hits
+        quest_badges = UserQuestBadge.objects.select_related('badge', 'user_quest_attempt__student').all()
+        course_badges = UserCourseBadge.objects.select_related('badge', 'user_course_group_enrollment__student').all()
 
-        # Perform operations on top_users
         user_badge_details = []
         for user in top_users:
-            # Fetch badges for the user
-            filtered_quest_badges = quest_badges.filter(quest_attempted__user=user)
-            filtered_course_badges = course_badges.filter(course_completed__user=user)
+            # Filter badges in memory
+            filtered_quest_badges = [badge for badge in quest_badges if badge.user_quest_attempt.student == user]
+            filtered_course_badges = [badge for badge in course_badges if badge.user_course_group_enrollment.student == user]
 
-            # Serialize badge data
             quest_badges_data = [
                 {
                     'badge_id': badge.badge.id,
                     'badge_name': badge.badge.name,
                     'badge_filename': badge.badge.image.filename,
-                    'count': filtered_quest_badges.filter(badge=badge.badge).count()
+                    'count': sum(1 for b in filtered_quest_badges if b.badge == badge.badge)
                 }
                 for badge in filtered_quest_badges
             ]
@@ -1345,7 +1409,7 @@ class AnalyticsPartThreeView(APIView):
                     'badge_id': badge.badge.id,
                     'badge_name': badge.badge.name,
                     'badge_filename': badge.badge.image.filename,
-                    'count': filtered_course_badges.filter(badge=badge.badge).count()
+                    'count': sum(1 for b in filtered_course_badges if b.badge == badge.badge)
                 }
                 for badge in filtered_course_badges
             ]
@@ -1361,8 +1425,8 @@ class AnalyticsPartThreeView(APIView):
             user_badge_details.append(user_badge)
 
         # Get top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
-        recent_quest_badges = quest_badges[:5]
-        recent_course_badges = course_badges[:5]
+        recent_quest_badges = quest_badges.order_by('-awarded_date')[:5]
+        recent_course_badges = course_badges.order_by('-awarded_date')[:5]
 
         # Combine and sort the badges by the most recent award date
         recent_badges = sorted(
@@ -1371,7 +1435,6 @@ class AnalyticsPartThreeView(APIView):
             reverse=True
         )[:5]
 
-        # Serialize the combined badge data
         recent_badges_data = []
         record_id = 0
         for badge in recent_badges:
@@ -1380,19 +1443,19 @@ class AnalyticsPartThreeView(APIView):
             quest_id = None
             quest_name = None
             if isinstance(badge, UserCourseBadge):
-                user_id = badge.course_completed.user.id
-                nickname = badge.course_completed.user.nickname
-                course_id = badge.course_completed.course.id
-                course_code = badge.course_completed.course.code
-                course_name = badge.course_completed.course.name
+                user_id = badge.user_course_group_enrollment.student.id
+                nickname = badge.user_course_group_enrollment.student.nickname
+                course_id = badge.user_course_group_enrollment.course_group.course.id
+                course_code = badge.user_course_group_enrollment.course_group.course.code
+                course_name = badge.user_course_group_enrollment.course_group.course.name
             else:
-                user_id = badge.quest_attempted.user.id
-                nickname = badge.quest_attempted.user.nickname
-                quest_id = badge.quest_attempted.quest.id
-                quest_name = badge.quest_attempted.quest.name
-                course_id = badge.quest_attempted.quest.from_course.id
-                course_code = badge.quest_attempted.quest.from_course.code
-                course_name = badge.quest_attempted.quest.from_course.name
+                user_id = badge.user_quest_attempt.student.id
+                nickname = badge.user_quest_attempt.student.nickname
+                quest_id = badge.user_quest_attempt.quest.id
+                quest_name = badge.user_quest_attempt.quest.name
+                course_id = badge.user_quest_attempt.quest.course_group.course.id
+                course_code = badge.user_quest_attempt.quest.course_group.course.code
+                course_name = badge.user_quest_attempt.quest.course_group.course.name
 
             badge_data = {
                 'record_id': record_id,
@@ -1409,10 +1472,90 @@ class AnalyticsPartThreeView(APIView):
             record_id += 1
             recent_badges_data.append(badge_data)
 
-        # Combine the data
         data = {
             'top_users_with_most_badges': user_badge_details,
             'recent_badge_awards': recent_badges_data
         }
+
+        return Response(data)
+
+
+class AnalyticsPartFourView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieves comprehensive statistics and aggregations for all courses,
+        including course groups, enrollments, quests, and quest progression.
+        """
+        # Step 1: Fetch all courses with related course groups and quests
+        courses = Course.objects.exclude(name="Private Course").prefetch_related(
+            'groups__quests'
+        ).select_related(
+            'term__academic_year'
+        )
+
+        # Step 2: Annotate quests with quest_completion
+        # This counts the number of unique students who have at least one submitted attempt per quest
+        quests_with_progression = Quest.objects.annotate(
+            quest_completion=Count(
+                'attempted_by__student',
+                filter=Q(attempted_by__submitted=True),
+                distinct=True
+            )
+        )
+
+        # Step 3: Prefetch quests with annotations to courses' groups
+        courses = courses.prefetch_related(
+            Prefetch(
+                'groups__quests',
+                queryset=quests_with_progression,
+                to_attr='annotated_quests'
+            )
+        )
+
+        # Step 4: Fetch all enrollments in bulk to minimize queries
+        # Create a mapping from course_group_id to enrollment counts
+        enrollments = UserCourseGroupEnrollment.objects.filter(
+            course_group__course__in=courses
+        ).values('course_group').annotate(
+            enrolled_students=Count('id')
+        )
+        enrollment_map = {enrollment['course_group']: enrollment['enrolled_students'] for enrollment in enrollments}
+
+        # Step 5: Construct the response data
+        data = []
+        for course in courses:
+            course_data = {
+                'course_id': course.id,
+                'course_code': course.code,
+                'course_name': course.name,
+                'course_term': f"AY {course.term.academic_year.start_year} - {course.term.academic_year.end_year} {course.term.name}",
+                'course_image': course.image.filename if course.image else None,
+                'course_groups': []
+            }
+
+            for group in course.groups.all():
+                group_id = group.id
+                enrolled_students = enrollment_map.get(group_id, 0)
+
+                group_data = {
+                    'group_id': group.id,
+                    'group_name': group.name,
+                    'enrolled_students': enrolled_students,
+                    'quests': []
+                }
+
+                for quest in getattr(group, 'annotated_quests', []):
+                    quest_data = {
+                        'quest_id': quest.id,
+                        'quest_name': quest.name,
+                        'quest_completion': quest.quest_completion
+                    }
+                    group_data['quests'].append(quest_data)
+
+                course_data['course_groups'].append(group_data)
+
+            data.append(course_data)
 
         return Response(data)

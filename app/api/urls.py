@@ -19,7 +19,7 @@ from .views import (
     AnalyticsPartOneView,
     AnalyticsPartTwoView,
     AnalyticsPartThreeView,
-    # AnalyticsPartFourView
+    AnalyticsPartFourView
 )
 from rest_framework.routers import DefaultRouter
 
@@ -44,8 +44,8 @@ router.register(r'documents', DocumentViewSet, basename='documents')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path("Analytics/part-one/", AnalyticsPartOneView.as_view(), name='Analytics-part-one'),
-    path("Analytics/part-two/<int:user_id>/", AnalyticsPartTwoView.as_view(), name='Analytics-part-two'),
-    path("Analytics/part-three/", AnalyticsPartThreeView.as_view(), name='Analytics-part-three'),
-    # path("Analytics/part-four/<int:user_id>/", AnalyticsPartFourView.as_view(), name='Analytics-part-four'),
+    path("analytics/part-one/", AnalyticsPartOneView.as_view(), name='analytics-part-one'),
+    path("analytics/part-two/", AnalyticsPartTwoView.as_view(), name='analytics-part-two'),
+    path("analytics/part-three/", AnalyticsPartThreeView.as_view(), name='analytics-part-three'),
+    path("analytics/part-four/", AnalyticsPartFourView.as_view(), name='analytics-part-four'),
 ]

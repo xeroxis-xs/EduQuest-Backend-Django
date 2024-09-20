@@ -257,19 +257,25 @@ class Command(BaseCommand):
         # Get all students
         student_list = EduquestUser.objects.filter(is_superuser=False)
         # Get all course groups
-        course_group_list = CourseGroup.objects.all()
+        course_group_list = CourseGroup.objects.exclude(name="Private Course Group")
+        # Get all courses
+        course_list = Course.objects.exclude(name="Private Course")
         for student in student_list:
-            for course_group in course_group_list:
-                if random.choice([True, False]):
+            for course in course_list:
+                # Filter course groups for the current course
+                course_groups_for_course = [cg for cg in course_group_list if cg.course == course]
+                if course_groups_for_course:
+                    # Ensure the student is enrolled in at least one course group for the current course
+                    course_group = random.choice(course_groups_for_course)
                     UserCourseGroupEnrollment.objects.create(
                         student=student,
                         course_group=course_group
                     )
-            print(f"Finished creating all fake user course group enrollments for student: {student.username}")
+        print(f"Finished creating all fake user course group enrollments for student: {student.username}")
 
     def create_fake_quests(self):
         # Get all course groups
-        course_group_list = CourseGroup.objects.all()
+        course_group_list = CourseGroup.objects.exclude(name="Private Course Group")
         image = Image.objects.get(name="Eduquest MCQ Quest")
         for course_group in course_group_list:
             for i in range(random.randint(0, 2)):

@@ -55,7 +55,7 @@ def award_first_attempt_badge(user_quest_attempt_id):
 
         # Check if the user has any "First Attempt" badge
         has_badge = UserQuestBadge.objects.filter(
-            quest_attempted__student=user,
+            user_quest_attempt__student=user,
             badge__name="First Attempt"
         ).exists()
 
@@ -64,7 +64,7 @@ def award_first_attempt_badge(user_quest_attempt_id):
             badge = Badge.objects.get(name="First Attempt")
             user_quest_badge, created = UserQuestBadge.objects.get_or_create(
                 badge=badge,
-                quest_attempted=attempt
+                user_quest_attempt=attempt
             )
             if created:
                 logger.info(f"[First Attempt] Badge awarded to user: {user.username}")
@@ -104,7 +104,7 @@ def award_perfectionist_badge(user_quest_attempt_id):
             badge = Badge.objects.get(name="Perfectionist")
             user_quest_badge, created = UserQuestBadge.objects.get_or_create(
                 badge=badge,
-                quest_attempted=attempt
+                user_quest_attempt=attempt
             )
             if created:
                 logger.info(f"[Perfectionist] Badge awarded to user: {attempt.student.username}")
@@ -167,7 +167,7 @@ def award_speedster_badge(quest_id):
         if fastest_attempt_score in top_three_scores:
             badge, created = UserQuestBadge.objects.get_or_create(
                 badge=Badge.objects.get(name="Speedster"),
-                quest_attempted=fastest_attempt
+                user_quest_attempt=fastest_attempt
             )
             if created:
                 logger.info(f"[Speedster] Badge awarded to user: {fastest_attempt.student.username}")
@@ -225,7 +225,7 @@ def award_expert_badge(quest_id):
         for attempt in top_attempts:
             user_quest_badge, created = UserQuestBadge.objects.get_or_create(
                 badge=badge,
-                quest_attempted=attempt
+                user_quest_attempt=attempt
             )
             if created:
                 logger.info(f"[Expert] Badge awarded to user: {attempt.student.username}")
@@ -335,7 +335,7 @@ def check_course_completion_and_update_enrollment(user_quest_attempt_id):
         logger.info(f"[Course Completion Check] Error in check_course_completion_and_update_enrollment: {e}")
 
 @shared_task
-def update_points_task(user_quest_attempt_id):
+def calculate_score_and_issue_points(user_quest_attempt_id):
     """
     Task update the user's total points.
     """

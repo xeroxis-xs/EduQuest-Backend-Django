@@ -192,19 +192,20 @@ class CourseGroupSerializer(serializers.ModelSerializer):
     course_id = serializers.PrimaryKeyRelatedField(
         queryset=Course.objects.all(),
         source='course',
-        # write_only=True
+        write_only=True
     )
     instructor_id = serializers.PrimaryKeyRelatedField(
         queryset=EduquestUser.objects.all(),
         source='instructor',
         write_only=True
     )
+    course = CourseSummarySerializer(read_only=True)
     instructor = EduquestUserSummarySerializer(read_only=True)
     total_students_enrolled = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseGroup
-        fields = ['id', 'course_id', 'instructor_id', 'instructor', 'name',
+        fields = ['id', 'course', 'course_id', 'instructor_id', 'instructor', 'name',
                   'session_day', 'session_time', 'total_students_enrolled']
 
     def get_total_students_enrolled(self, obj):
@@ -225,23 +226,30 @@ class CourseGroupSerializer(serializers.ModelSerializer):
         return instance
 
 
+class CourseGroupSummarySerializer(serializers.ModelSerializer):
+    course = CourseSummarySerializer(read_only=True)
+    class Meta:
+        model = CourseGroup
+        fields = ['id', 'name', 'course']
+
+
 class UserCourseGroupEnrollmentSerializer(serializers.ModelSerializer):
     course_group_id = serializers.PrimaryKeyRelatedField(
         queryset=CourseGroup.objects.all(),
         source='course_group',
-        # write_only=True
+        write_only=True
     )
     student_id = serializers.PrimaryKeyRelatedField(
         queryset=EduquestUser.objects.all(),
         source='student',
         # write_only=True
     )
-    # course_group = CourseGroupSerializer(read_only=True)
+    course_group = CourseGroupSerializer(read_only=True)
     # student = EduquestUserSummarySerializer(read_only=True)
 
     class Meta:
         model = UserCourseGroupEnrollment
-        fields = ['id', 'course_group_id', 'student_id', 'enrolled_on', 'completed_on']
+        fields = ['id', 'course_group_id', 'course_group', 'student_id', 'enrolled_on', 'completed_on']
 
     def validate(self, attrs):
         student = attrs.get('student')
@@ -272,7 +280,6 @@ class UserCourseGroupEnrollmentSerializer(serializers.ModelSerializer):
             # Reset the completion date if the course group is changed
             instance.completed_on = None
 
-
         student = validated_data.pop('student', None)
         if student:
             instance.student = student
@@ -281,6 +288,18 @@ class UserCourseGroupEnrollmentSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+class UserCourseGroupEnrollmentSummarySerializer(serializers.ModelSerializer):
+    course_group = CourseGroupSummarySerializer(read_only=True)
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),
+        source='student',
+    )
+
+    class Meta:
+        model = UserCourseGroupEnrollment
+        fields = ['id', 'course_group', 'student_id']
 
 
 class QuestSerializer(serializers.ModelSerializer):
@@ -341,6 +360,14 @@ class QuestSerializer(serializers.ModelSerializer):
         return instance
 
 
+class QuestSummarySerializer(serializers.ModelSerializer):
+    course_group = CourseGroupSummarySerializer(read_only=True)
+
+    class Meta:
+        model = Quest
+        fields = ['id', 'course_group', 'name']
+
+
 class AnswerSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)  # Make 'id' writeable
     class Meta:
@@ -392,13 +419,11 @@ class QuestionSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-
     def update(self, instance, validated_data):
         # Change the parent quest if provided (Not used in the current implementation)
         quest = validated_data.pop('quest', None)
         if quest:
             instance.quest = quest
-
 
         # Update the question instance attributes
         for attr, value in validated_data.items():
@@ -470,6 +495,19 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+class UserQuestAttemptSummarySerializer(serializers.ModelSerializer):
+    quest = QuestSummarySerializer(read_only=True)
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=EduquestUser.objects.all(),
+        source='student',
+    )
+
+    class Meta:
+        model = UserQuestAttempt
+        fields = ['id', 'quest', 'student_id', 'submitted', 'time_taken',
+                  'total_score_achieved']
 
 
 class BulkUpdateUserQuestAttemptSerializer(serializers.Serializer):
@@ -601,7 +639,8 @@ class UserCourseBadgeSerializer(serializers.ModelSerializer):
         write_only=True
     )
     badge = BadgeSerializer(read_only=True)
-    user_course_group_enrollment = UserCourseGroupEnrollmentSerializer(read_only=True)
+    user_course_group_enrollment = UserCourseGroupEnrollmentSummarySerializer(read_only=True)
+
     class Meta:
         model = UserCourseBadge
         fields = '__all__'
@@ -633,7 +672,7 @@ class UserQuestBadgeSerializer(serializers.ModelSerializer):
         write_only=True
     )
     badge = BadgeSerializer(read_only=True)
-    user_quest_attempt = UserQuestAttemptSerializer(read_only=True)
+    user_quest_attempt = UserQuestAttemptSummarySerializer(read_only=True)
     class Meta:
         model = UserQuestBadge
         fields = '__all__'

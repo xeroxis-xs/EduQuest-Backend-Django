@@ -96,9 +96,9 @@ course_list = [
 ]
 
 course_group_list = [
-    # {"course_code": "SC2000", "name": "SCED", "session_day": "Monday", "session_time": "2:30 PM - 3:30 PM"},
-    # {"course_code": "SC2000", "name": "SCS3", "session_day": "Tuesday", "session_time": "5:30 PM - 6:30 PM"},
-    # {"course_code": "SC2000", "name": "SCSH", "session_day": "Tuesday", "session_time": "10:30 AM - 11:30 AM"},
+    {"course_code": "SC2000", "name": "SCED", "session_day": "Monday", "session_time": "2:30 PM - 3:30 PM"},
+    {"course_code": "SC2000", "name": "SCS3", "session_day": "Tuesday", "session_time": "5:30 PM - 6:30 PM"},
+    {"course_code": "SC2000", "name": "SCSH", "session_day": "Tuesday", "session_time": "10:30 AM - 11:30 AM"},
     {"course_code": "SC2000", "name": "SCSI", "session_day": "Thursday", "session_time": "2:30 PM - 3:30 PM"},
     {"course_code": "SC2000", "name": "SCSJ", "session_day": "Thursday", "session_time": "9:30 AM - 10:30 AM"},
     {"course_code": "SC1003", "name": "SWLA", "session_day": "Friday", "session_time": "10:30 AM - 11:30 AM"},
