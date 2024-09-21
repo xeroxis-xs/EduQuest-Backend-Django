@@ -1,11 +1,9 @@
-version: '3.7'
-
 services:
   app:
     image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
     ports:
       - "8000:8000"
-    command: gunicorn core.wsgi:application -b 0.0.0.0:8000
+    command: sh -c "python manage.py collectstatic --noinput && gunicorn core.wsgi:application -b 0.0.0.0:8000"
     environment:
       - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
