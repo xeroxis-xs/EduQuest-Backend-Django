@@ -348,12 +348,6 @@ class QuestSerializer(serializers.ModelSerializer):
         if image:
             instance.image = image
 
-        # If the status is changed from Active to Expired,
-        # update the expiration_date to the current time
-        status = validated_data.get('status', None)
-        if instance.status == 'Active' and status == 'Expired':
-            instance.expiration_date = timezone.now()
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

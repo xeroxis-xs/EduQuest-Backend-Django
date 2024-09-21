@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.db import transaction
 from rest_framework import viewsets
 from rest_framework import generics
@@ -150,6 +152,12 @@ class CourseGroupViewSet(viewsets.ModelViewSet):
         serializer = CourseGroupSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def non_private(self, request):
+        queryset = CourseGroup.objects.exclude(course__type='Private').order_by('-id')
+        serializer = CourseGroupSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
     queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
@@ -248,6 +256,7 @@ class QuestViewSet(viewsets.ModelViewSet):
                 'status': request.data.get('status'),
                 'max_attempts': request.data.get('max_attempts'),
                 'course_group_id': request.data.get('course_group_id'),
+                'tutorial_date': request.data.get('tutorial_date'),
                 'image_id': request.data.get('image_id'),
                 'organiser_id': request.data.get('organiser_id')
             }
@@ -1391,37 +1400,50 @@ class AnalyticsPartThreeView(APIView):
 
         user_badge_details = []
         for user in top_users:
-            # Filter badges in memory
-            filtered_quest_badges = [badge for badge in quest_badges if badge.user_quest_attempt.student == user]
-            filtered_course_badges = [badge for badge in course_badges if badge.user_course_group_enrollment.student == user]
+            # Aggregate quest badges
+            quest_badges_dict = {}
+            for badge in quest_badges:
+                if badge.user_quest_attempt.student == user:
+                    badge_id = badge.badge.id
+                    if badge_id not in quest_badges_dict:
+                        quest_badges_dict[badge_id] = {
+                            "badge_id": badge_id,
+                            "badge_name": badge.badge.name,
+                            "badge_filename": badge.badge.image.filename,
+                            "count": 1
+                        }
+                    else:
+                        quest_badges_dict[badge_id]["count"] += 1
 
-            quest_badges_data = [
-                {
-                    'badge_id': badge.badge.id,
-                    'badge_name': badge.badge.name,
-                    'badge_filename': badge.badge.image.filename,
-                    'count': sum(1 for b in filtered_quest_badges if b.badge == badge.badge)
-                }
-                for badge in filtered_quest_badges
-            ]
-            course_badges_data = [
-                {
-                    'badge_id': badge.badge.id,
-                    'badge_name': badge.badge.name,
-                    'badge_filename': badge.badge.image.filename,
-                    'count': sum(1 for b in filtered_course_badges if b.badge == badge.badge)
-                }
-                for badge in filtered_course_badges
-            ]
+            # Convert the dictionary to a list
+            quest_badges_data = list(quest_badges_dict.values())
 
+            # Aggregate course badges similarly
+            course_badges_dict = {}
+            for badge in course_badges:
+                if badge.user_course_group_enrollment.student == user:
+                    badge_id = badge.badge.id
+                    if badge_id not in course_badges_dict:
+                        course_badges_dict[badge_id] = {
+                            "badge_id": badge_id,
+                            "badge_name": badge.badge.name,
+                            "badge_filename": badge.badge.image.filename,
+                            "count": 1
+                        }
+                    else:
+                        course_badges_dict[badge_id]["count"] += 1
+
+            # Convert the dictionary to a list
+            course_badges_data = list(course_badges_dict.values())
+
+            # Add the aggregated data to the user_badge_details
             user_badge = {
-                'user_id': user.id,
-                'nickname': user.nickname,
-                'badge_count': user.total_badge_count,
-                'quest_badges': quest_badges_data,
-                'course_badges': course_badges_data,
+                "user_id": user.id,
+                "nickname": user.nickname,
+                "badge_count": user.total_badge_count,  # Use the annotated total_badge_count
+                "quest_badges": quest_badges_data,
+                "course_badges": course_badges_data
             }
-
             user_badge_details.append(user_badge)
 
         # Get top 5 most recent badge awards from both UserQuestBadge and UserCourseBadge
@@ -1485,77 +1507,134 @@ class AnalyticsPartFourView(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        Retrieves comprehensive statistics and aggregations for all courses,
-        including course groups, enrollments, quests, and quest progression.
+        Retrieves comprehensive statistics and aggregations for all courses (excluding private),
+        including course groups, enrollments, quests, quest progression,
+        and detailed student progress for each quest.
         """
-        # Step 1: Fetch all courses with related course groups and quests
-        courses = Course.objects.exclude(name="Private Course").prefetch_related(
-            'groups__quests'
-        ).select_related(
-            'term__academic_year'
-        )
-
-        # Step 2: Annotate quests with quest_completion
-        # This counts the number of unique students who have at least one submitted attempt per quest
-        quests_with_progression = Quest.objects.annotate(
-            quest_completion=Count(
-                'attempted_by__student',
-                filter=Q(attempted_by__submitted=True),
-                distinct=True
-            )
-        )
-
-        # Step 3: Prefetch quests with annotations to courses' groups
-        courses = courses.prefetch_related(
+        # Step 1: Fetch all courses except those with type="private"
+        courses = Course.objects.exclude(type="Private").select_related(
+            'term__academic_year',  # Fetch related Term and AcademicYear
+            'image'                  # Fetch related Image
+        ).prefetch_related(
             Prefetch(
-                'groups__quests',
-                queryset=quests_with_progression,
-                to_attr='annotated_quests'
+                'groups',
+                queryset=CourseGroup.objects.annotate(
+                    enrolled_students_count=Count('enrolled_students')  # Annotate enrolled students count
+                ).prefetch_related(
+                    Prefetch(
+                        'quests',
+                        queryset=Quest.objects.annotate(
+                            quest_completion=Count(
+                                'attempted_by__student',
+                                filter=Q(attempted_by__submitted=True),
+                                distinct=True
+                            )
+                        )
+                    )
+                )
             )
         )
 
-        # Step 4: Fetch all enrollments in bulk to minimize queries
-        # Create a mapping from course_group_id to enrollment counts
+        if not courses.exists():
+            return Response(
+                {"message": "No courses available."},
+                status=200
+            )
+
+        # Step 2: Fetch all enrollments for the fetched courses
         enrollments = UserCourseGroupEnrollment.objects.filter(
             course_group__course__in=courses
-        ).values('course_group').annotate(
-            enrolled_students=Count('id')
+        ).select_related(
+            'student',
+            'course_group'
         )
-        enrollment_map = {enrollment['course_group']: enrollment['enrolled_students'] for enrollment in enrollments}
 
-        # Step 5: Construct the response data
-        data = []
+        # Mapping: course_group_id -> set of student IDs
+        group_to_students = defaultdict(set)
+        student_id_to_username = {}
+
+        for enrollment in enrollments:
+            group_id = enrollment.course_group.id
+            student = enrollment.student
+            group_to_students[group_id].add(student.id)
+            student_id_to_username[student.id] = student.username
+
+        # Step 3: Fetch all UserQuestAttempt data for the fetched courses' quests and enrolled students
+        user_quest_attempts = UserQuestAttempt.objects.filter(
+            quest__course_group__course__in=courses,
+            student__in=EduquestUser.objects.filter(
+                enrolled_course_groups__course_group__course__in=courses
+            ).distinct()
+        ).values(
+            'quest_id',
+            'student_id'
+        ).annotate(
+            highest_score=Max('total_score_achieved')
+        )
+
+        # Build a mapping: (quest_id, student_id) -> highest_score
+        quest_student_to_score = {}
+        for attempt in user_quest_attempts:
+            key = (attempt['quest_id'], attempt['student_id'])
+            quest_student_to_score[key] = attempt['highest_score']
+
+        # Step 4: Construct response data for all courses
+        all_courses_data = []
         for course in courses:
+            course_groups_data = []
+            for group in course.groups.all():
+                group_id = group.id
+                enrolled_students_count = group.enrolled_students_count
+                enrolled_student_ids = group_to_students.get(group_id, set())
+
+                # Build a list of enrolled students with their usernames
+                enrolled_students = [
+                    {'student_id': student_id, 'username': student_id_to_username.get(student_id, 'Unknown')}
+                    for student_id in enrolled_student_ids
+                ]
+
+                # Build quests data for each course group
+                quests_data = []
+                for quest in group.quests.all():
+                    # For each quest, build a list of student progress
+                    student_progress = []
+                    for student in enrolled_students:
+                        key = (quest.id, student['student_id'])
+                        highest_score = quest_student_to_score.get(key, None)  # None if no attempts
+
+                        student_progress.append({
+                            'username': student['username'],
+                            'highest_score': highest_score
+                        })
+
+                    quest_data = {
+                        'quest_id': quest.id,
+                        'quest_name': quest.name,
+                        'quest_completion': quest.quest_completion,
+                        'quest_max_score': quest.total_max_score(),
+                        'students_progress': student_progress
+                    }
+                    quests_data.append(quest_data)
+
+                # Assemble group data
+                group_data = {
+                    'group_id': group.id,
+                    'group_name': group.name,
+                    'enrolled_students': enrolled_students_count,
+                    'quests': quests_data
+                }
+                course_groups_data.append(group_data)
+
+            # Assemble course data
             course_data = {
                 'course_id': course.id,
                 'course_code': course.code,
                 'course_name': course.name,
                 'course_term': f"AY {course.term.academic_year.start_year} - {course.term.academic_year.end_year} {course.term.name}",
                 'course_image': course.image.filename if course.image else None,
-                'course_groups': []
+                'course_groups': course_groups_data
             }
+            all_courses_data.append(course_data)
 
-            for group in course.groups.all():
-                group_id = group.id
-                enrolled_students = enrollment_map.get(group_id, 0)
-
-                group_data = {
-                    'group_id': group.id,
-                    'group_name': group.name,
-                    'enrolled_students': enrolled_students,
-                    'quests': []
-                }
-
-                for quest in getattr(group, 'annotated_quests', []):
-                    quest_data = {
-                        'quest_id': quest.id,
-                        'quest_name': quest.name,
-                        'quest_completion': quest.quest_completion
-                    }
-                    group_data['quests'].append(quest_data)
-
-                course_data['course_groups'].append(group_data)
-
-            data.append(course_data)
-
-        return Response(data)
+        # Step 5: Return the response data
+        return Response(all_courses_data)

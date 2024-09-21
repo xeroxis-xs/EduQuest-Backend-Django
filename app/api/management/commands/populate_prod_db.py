@@ -48,8 +48,8 @@ class Command(BaseCommand):
         self.create_fake_data()
 
     def clear_db(self):
-        eduquestUsers = EduquestUser.objects.exclude(is_superuser=True)
-        eduquestUsers.delete()
+        eduquest_users = EduquestUser.objects.exclude(is_superuser=True)
+        eduquest_users.delete()
         Image.objects.all().delete()
         AcademicYear.objects.all().delete()
         Badge.objects.all().delete()
@@ -100,7 +100,7 @@ class Command(BaseCommand):
 
     def get_admin(self):
         try:
-            admin = EduquestUser.objects.get(id=1)
+            admin = EduquestUser.objects.get(username='admin')
             return admin
         except Exception as e:
             print(f"Failed to get admin: {str(e)}")
@@ -292,10 +292,10 @@ class Command(BaseCommand):
 
     def create_fake_questions(self):
         # Get all quests
-        quest_list = Quest.objects.all()
+        quest_list = Quest.objects.exclude(name="Private Quest")
         for quest in quest_list:
             # Some quest may not have any questions created yet
-            for i in range(random.randint(0, 3)):
+            for i in range(random.randint(1, 3)):
                 Question.objects.create(
                     quest=quest,
                     text=fake.sentence(nb_words=10),

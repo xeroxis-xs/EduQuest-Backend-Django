@@ -1,4 +1,7 @@
+from datetime import datetime
 import os
+
+from celery import chain
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.text import slugify
@@ -100,14 +103,34 @@ class Course(models.Model):
         #     raise ValidationError("A course must have at least one coordinator.")
 
     def save(self, *args, **kwargs):
+        is_new_instance = self.pk is None
+        old_status_value = None
+        if not is_new_instance:
+            old_instance = Course.objects.get(pk=self.pk)
+            old_status_value = old_instance.status
+
         self.full_clean()  # Call the clean method
-        super().save(*args, **kwargs)
+        super(Course, self).save(*args, **kwargs)
+
+        # After saving the instance, check if 'status' changed from Active to Expired
+        if (is_new_instance and self.status == 'Expired') or (old_status_value == 'Active' and self.status == 'Expired'):
+            # Import tasks locally to avoid circular import
+            from .tasks import check_course_completion_and_award_completionist_badge
+            # Trigger all tasks
+            check_course_completion_and_award_completionist_badge.delay(self.id)
+
+            # Recursively set all quests in all course groups to 'Expired'
+            for course_group in self.groups.all():
+                for quest in course_group.quests.all():
+                    quest.status = 'Expired'
+                    quest.save()
 
     def total_students_enrolled(self):
         return UserCourseGroupEnrollment.objects.filter(course_group__course=self).count()
 
     def __str__(self):
         return f"Term {self.term.name} - {self.code}"
+
 
 
 class CourseGroup(models.Model):
@@ -144,20 +167,21 @@ class UserCourseGroupEnrollment(models.Model):
     def __str__(self):
         return f"{self.user.username} enrolled in {self.course_group.course.code} - {self.course_group.name}"
 
-    def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        previous_completed_on = None
-        if not is_new:
-            previous = UserCourseGroupEnrollment.objects.get(pk=self.pk)
-            previous_completed_on = previous.completed_on
+    # def save(self, *args, **kwargs):
+    #     is_new = self.pk is None
+    #     previous_completed_on = None
+    #     if not is_new:
+    #         previous = UserCourseGroupEnrollment.objects.get(pk=self.pk)
+    #         previous_completed_on = previous.completed_on
+    #
+    #     super(UserCourseGroupEnrollment, self).save(*args, **kwargs)
+    #
+    #     if (is_new and self.completed_on) or (previous_completed_on is None and self.completed_on is not None):
+    #         # Import task locally to avoid circular imports
+    #         from .tasks import award_completionist_badge
+    #         # Trigger the task
+    #         award_completionist_badge.delay(self.id)
 
-        super(UserCourseGroupEnrollment, self).save(*args, **kwargs)
-
-        if (is_new and self.completed_on) or (previous_completed_on is None and self.completed_on is not None):
-            # Import task locally to avoid circular imports
-            from .tasks import award_completionist_badge
-            # Trigger the task
-            award_completionist_badge.delay(self.id)
 
 class Quest(models.Model):
     """
@@ -196,6 +220,9 @@ class Quest(models.Model):
         super(Quest, self).save(*args, **kwargs)
 
         if (is_new and self.status == "Expired") or (previous_status != "Expired" and self.status == "Expired"):
+            self.expiration_date = datetime.now()
+            super(Quest, self).save(update_fields=['expiration_date'])
+
             from .tasks import award_speedster_badge, award_expert_badge
             award_expert_badge.delay(self.id)
             award_speedster_badge.delay(self.id)
@@ -226,7 +253,6 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"{self.text} for Question ID {self.question.id}"
-
 
 
 class UserQuestAttempt(models.Model):
@@ -303,13 +329,10 @@ class UserQuestAttempt(models.Model):
         # After saving the instance, check if 'submitted' changed from False to True
         if (is_new_instance and self.submitted) or (old_submitted_value == False and self.submitted == True):
             # Import tasks locally to avoid circular import
-            from .tasks import (award_perfectionist_badge, award_first_attempt_badge,
-                                check_course_completion_and_update_enrollment, calculate_score_and_issue_points)
+            from .tasks import (award_first_attempt_badge, calculate_score_and_issue_points)
             # Trigger all tasks
-            award_perfectionist_badge.delay(self.id)
-            award_first_attempt_badge.delay(self.id)
-            check_course_completion_and_update_enrollment.delay(self.id)
             calculate_score_and_issue_points.delay(self.id)
+            award_first_attempt_badge.delay(self.id)
 
 
 class UserAnswerAttempt(models.Model):
