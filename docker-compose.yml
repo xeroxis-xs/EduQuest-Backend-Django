@@ -1,6 +1,6 @@
 services:
   app:
-    image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
+    image: xeroxisxs/eduquest-backend-django:latest
     ports:
       - "8000:8000"
     command: sh -c "python manage.py collectstatic --noinput && gunicorn core.wsgi:application -b 0.0.0.0:8000"
@@ -23,7 +23,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   celery:
-    image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
+    image: xeroxisxs/eduquest-backend-django:latest
     command: celery -A core worker --loglevel=info
     environment:
       - REDIS_HOST=redis
@@ -44,7 +44,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
 
   celery-beat:
-    image: eduquestbackend.azurecr.io/xeroxis-xs/eduquest-backend-django:latest
+    image: xeroxisxs/eduquest-backend-django:latest
     command: celery -A core beat --loglevel=info
     environment:
       - REDIS_HOST=redis
