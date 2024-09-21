@@ -2,13 +2,13 @@
 FROM python:3.10-alpine
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Lightweight container
 COPY requirements.txt /requirements.txt
 RUN apk add --update --no-cache --virtual .tmp gcc libc-dev linux-headers
-RUN pip install -r /requirements.txt
+RUN pip install -r requirements.txt
 RUN apk del .tmp
 
 RUN mkdir /app
