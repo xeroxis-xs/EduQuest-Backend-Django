@@ -1,9 +1,6 @@
-version: '3.8'
-
 services:
   app:
     image: xeroxisxs/eduquest-backend-django:latest
-    platform: linux/arm64/v8
     ports:
       - "8000:8000"
     command: sh -c "python manage.py collectstatic --noinput && gunicorn core.wsgi:application -b 0.0.0.0:8000"
@@ -27,7 +24,6 @@ services:
 
   celery:
     image: xeroxisxs/eduquest-backend-django:latest
-    platform: linux/arm64/v8
     command: celery -A core worker --loglevel=info
     environment:
       - REDIS_HOST=redis
@@ -49,7 +45,6 @@ services:
 
   celery-beat:
     image: xeroxisxs/eduquest-backend-django:latest
-    platform: linux/arm64/v8
     command: celery -A core beat --loglevel=info
     environment:
       - REDIS_HOST=redis
@@ -71,6 +66,5 @@ services:
 
   redis:
     image: "redis:alpine"
-    platform: linux/arm64/v8
     ports:
       - "6379:6379"
