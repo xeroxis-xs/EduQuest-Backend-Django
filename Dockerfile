@@ -35,8 +35,6 @@ COPY . .
 RUN apt-get update && apt-get install -y --no-install-recommends redis-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
 
 # Remove build dependencies to reduce image size
 RUN apt-get purge -y --auto-remove gcc libc-dev libffi-dev libssl-dev make \

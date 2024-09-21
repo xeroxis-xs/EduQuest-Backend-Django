@@ -39,8 +39,6 @@ RUN apk add --no-cache redis
 # Clean up build dependencies to reduce image size
 RUN apk del gcc libc-dev linux-headers libffi-dev make openssl-dev
 
-# Collect static files (optional, ensure Django is configured correctly)
-# RUN python manage.py collectstatic --noinput
 
 # Run Django development server by default
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
