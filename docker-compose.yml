@@ -3,7 +3,7 @@ services:
     image: xeroxisxs/eduquest-backend-django:latest
     ports:
       - "8000:8000"
-    command: sh -c "python app/manage.py collectstatic --noinput && gunicorn app.core.wsgi:application -b 0.0.0.0:8000"
+    command: sh -c "python manage.py collectstatic --noinput && gunicorn core.wsgi:application -b 0.0.0.0:8000"
     environment:
       - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
@@ -24,7 +24,7 @@ services:
 
   celery:
     image: xeroxisxs/eduquest-backend-django:latest
-    command: celery -A app.core worker --loglevel=info
+    command: celery -A core worker --loglevel=info
     environment:
       - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
@@ -45,7 +45,7 @@ services:
 
   celery-beat:
     image: xeroxisxs/eduquest-backend-django:latest
-    command: celery -A app.core beat --loglevel=info
+    command: celery -A core beat --loglevel=info
     environment:
       - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
