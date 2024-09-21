@@ -3,7 +3,9 @@ services:
     image: xeroxisxs/eduquest-backend-django:latest
     ports:
       - "8000:8000"
-    command: sh -c "python manage.py collectstatic --noinput && gunicorn core.wsgi:application -b 0.0.0.0:8000"
+    command: >
+      sh -c "python manage.py collectstatic --noinput &&
+             gunicorn core.wsgi:application -b 0.0.0.0:8000"
     environment:
       - REDIS_HOST=redis
       - SECRET_KEY=${SECRET_KEY}
@@ -20,7 +22,7 @@ services:
       - AZURE_CONTAINER=${AZURE_CONTAINER}
       - AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=${AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
 
   celery:
     image: xeroxisxs/eduquest-backend-django:latest
@@ -41,7 +43,7 @@ services:
       - AZURE_CONTAINER=${AZURE_CONTAINER}
       - AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=${AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
 
   celery-beat:
     image: xeroxisxs/eduquest-backend-django:latest
@@ -62,7 +64,7 @@ services:
       - AZURE_CONTAINER=${AZURE_CONTAINER}
       - AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=${AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0  # Added
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
 
   redis:
     image: "redis:alpine"
