@@ -65,7 +65,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'api.exceptions.CustomExceptionHandler',
 }
 
 AZURE_CLIENT_ID = os.environ.get('AZURE_AD_CLIENT_ID')
@@ -81,7 +81,6 @@ AUTHENTICATION_BACKENDS = [
 
 
 MIDDLEWARE = [
-    'api.middleware.DisableCSRF',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -191,7 +190,7 @@ STORAGES = {
     }
 }
 
-CSRF_TRUSTED_ORIGINS = ['https://eduquest-backend.azurewebsites.net']
+# CSRF_TRUSTED_ORIGINS = ['https://eduquest-backend.azurewebsites.net']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
