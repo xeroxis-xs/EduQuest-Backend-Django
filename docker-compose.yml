@@ -21,6 +21,9 @@ services:
       - AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=${AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   celery:
     image: xeroxisxs/eduquest-backend-django:latest
@@ -42,6 +45,9 @@ services:
       - AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=${AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   celery-beat:
     image: xeroxisxs/eduquest-backend-django:latest
@@ -63,6 +69,9 @@ services:
       - AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=${AZURE_STORAGE_ACCOUNT_CONNECTION_STRING}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   redis:
     image: "redis:alpine"
