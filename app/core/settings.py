@@ -39,7 +39,7 @@ if ALLOWED_HOSTS_ENV:
 # Application definition
 
 INSTALLED_APPS = [
-    # 'jazzmin',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -199,11 +199,15 @@ CSRF_TRUSTED_ORIGINS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# # Jazzmin
-# JAZZMIN_SETTINGS = {
-#     # Whether to show the UI customizer on the sidebar
-#     "show_ui_builder": True
-# }
+# Jazzmin
+JAZZMIN_SETTINGS = {
+    "site_title": "EduQuest Admin",
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "theme": "darkly",
+    # "dark_mode_theme": "darkly",
+}
 
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 CELERY_BROKER_URL = f'redis://{REDIS_HOST}:6379/0'
