@@ -2,18 +2,14 @@ from collections import defaultdict
 
 from django.db import transaction
 from rest_framework import viewsets
-from rest_framework import generics
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.http import JsonResponse
 from datetime import timedelta
 from django.db.models import Count, Q, Max, Avg, Prefetch
 from .excel import Excel
-from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from django.db.models import Sum, F, ExpressionWrapper, DurationField
@@ -53,8 +49,21 @@ from .serializers import (
     UserCourseBadgeSerializer,
     DocumentSerializer
 )
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+import logging
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+# Test view to check the request method and data
+@api_view(['GET', 'POST'])
+def test_view(request):
+    return Response({
+        'method': request.method,
+        'data': request.data,
+    })
 
 
 class EduquestUserViewSet(viewsets.ModelViewSet):
@@ -313,7 +322,8 @@ class QuestViewSet(viewsets.ModelViewSet):
                     new_user_quest_attempt_id = user_quest_attempt.id
 
                     # Get the generated empty-prefilled UserAnswerAttempt objects for the UserQuestAttempt
-                    user_answer_attempts = UserAnswerAttempt.objects.filter(user_quest_attempt=new_user_quest_attempt_id)
+                    user_answer_attempts = UserAnswerAttempt.objects.filter(
+                        user_quest_attempt=new_user_quest_attempt_id)
                     # Update selected answers based on Excel data
                     try:
                         for user_answer_attempt in user_answer_attempts:
@@ -346,6 +356,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        logger.debug("Received POST request with data: %s", request.data)
         if isinstance(request.data, list):
             serializer = self.get_serializer(data=request.data, many=True)
             serializer.is_valid(raise_exception=True)
@@ -356,7 +367,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
-
 
 
 class AnswerViewSet(viewsets.ModelViewSet):
@@ -433,7 +443,6 @@ class UserQuestAttemptViewSet(viewsets.ModelViewSet):
             instance.submitted = True
             instance.save()
         return Response({"message": f"All attempts for quest {quest_id} have been marked as submitted."})
-
 
     @action(detail=False, methods=['patch'], url_path='bulk-update')
     def bulk_update(self, request, *args, **kwargs):
@@ -582,7 +591,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return Response({"Error uploading document": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class AnalyticsPartOneView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -598,15 +606,18 @@ class AnalyticsPartOneView(APIView):
 
         # 2. Total number of course enrollments and new enrollments since last week
         total_enrollments = UserCourseGroupEnrollment.objects.exclude(course_group__course__type="Private").count()
-        new_enrollments_last_week = UserCourseGroupEnrollment.objects.exclude(course_group__course__type="Private").filter(
+        new_enrollments_last_week = UserCourseGroupEnrollment.objects.exclude(
+            course_group__course__type="Private").filter(
             enrolled_on__gte=last_week).count()
-        new_enrollments_percentage = (new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
+        new_enrollments_percentage = (
+                                                 new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
 
         # 3. Total number of quest attempts and new attempts since last week
         total_quest_attempts = UserQuestAttempt.objects.exclude(quest__type="Private").count()
         new_quest_attempts_last_week = UserQuestAttempt.objects.exclude(quest__type="Private").filter(
             first_attempted_date__gte=last_week).count()
-        new_quest_attempts_percentage = (new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
+        new_quest_attempts_percentage = (
+                                                    new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
 
         # 4. User with the shortest non-zero time_taken and perfect score
         # Filter UserQuestBadge for users with the "Perfectionist" badge
@@ -665,7 +676,8 @@ class AnalyticsPartTwoView(APIView):
         if not option:
             return Response({"error": "option is required in the URL parameters."}, status=400)
         if option not in ['course_progression', 'badge_progression', 'both']:
-            return Response({"error": "option must be either course_progression, badge_progression, or both."}, status=400)
+            return Response({"error": "option must be either course_progression, badge_progression, or both."},
+                            status=400)
 
         if option == 'course_progression':
             return self.get_course_progression(user_id)
@@ -745,7 +757,9 @@ class AnalyticsPartTwoView(APIView):
             user_course_group_enrollment__student_id=user_id
         ).select_related('badge')
 
-        badge_aggregation = {badge.id: {'badge_id': badge.id, 'badge_name': badge.name, 'badge_filename': badge.image.filename if badge.image else None, 'count': 0} for badge in all_badges}
+        badge_aggregation = {badge.id: {'badge_id': badge.id, 'badge_name': badge.name,
+                                        'badge_filename': badge.image.filename if badge.image else None, 'count': 0} for
+                             badge in all_badges}
 
         for badge in user_quest_badges:
             badge_aggregation[badge.badge.id]['count'] += 1
@@ -896,7 +910,7 @@ class AnalyticsPartFourView(APIView):
         # Step 1: Fetch all courses except those with type="private"
         courses = Course.objects.exclude(type="Private").select_related(
             'term__academic_year',  # Fetch related Term and AcademicYear
-            'image'                  # Fetch related Image
+            'image'  # Fetch related Image
         ).prefetch_related(
             Prefetch(
                 'groups',
