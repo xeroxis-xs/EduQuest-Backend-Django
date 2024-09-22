@@ -202,6 +202,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Jazzmin
 JAZZMIN_SETTINGS = {
     "site_title": "EduQuest Admin",
+    "site_header": "EduQuest Admin",
+    "site_brand": "EduQuest Admin",
+    "welcome_sign": "Welcome to EduQuest Admin",
+    "search_model": ["api.Course"],
+    "topmenu_links": [
+        {"name": "Front End App", "url": "https://eduquest-frontend.azurewebsites.net/", "permissions": ["auth.view_user"]},
+    ],
 }
 
 JAZZMIN_UI_TWEAKS = {
