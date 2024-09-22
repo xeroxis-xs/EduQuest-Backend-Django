@@ -190,7 +190,7 @@ STORAGES = {
     }
 }
 
-# CSRF_TRUSTED_ORIGINS = ['https://eduquest-backend.azurewebsites.net']
+CSRF_TRUSTED_ORIGINS = ['https://eduquest-backend.azurewebsites.net']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
