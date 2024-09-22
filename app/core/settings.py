@@ -64,8 +64,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    ),
-    'EXCEPTION_HANDLER': 'api.exceptions.CustomExceptionHandler',
+    )
 }
 
 AZURE_CLIENT_ID = os.environ.get('AZURE_AD_CLIENT_ID')
