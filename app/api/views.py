@@ -50,6 +50,7 @@ from .serializers import (
     DocumentSerializer
 )
 from rest_framework.decorators import api_view
+from django.utils.decorators import method_decorator
 from rest_framework.response import Response
 from django.middleware.csrf import get_token
 import logging
@@ -59,8 +60,9 @@ User = get_user_model()
 
 
 # Test view to check the request method and data
-@csrf_exempt
+
 @api_view(['GET', 'POST'])
+@csrf_exempt
 def test_view(request):
     return Response({
         'method': request.method,
@@ -175,6 +177,7 @@ class CourseGroupViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
     queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
     serializer_class = UserCourseGroupEnrollmentSerializer
@@ -197,6 +200,7 @@ class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
             '-id')
         serializer = UserCourseGroupEnrollmentSerializer(queryset, many=True)
         return Response(serializer.data)
+
 
 
 class QuestViewSet(viewsets.ModelViewSet):
