@@ -346,21 +346,17 @@ class QuestionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        # Check if the request contains a list (bulk create)
         if isinstance(request.data, list):
-            # Many=True indicates we're expecting a list of data
             serializer = self.get_serializer(data=request.data, many=True)
             serializer.is_valid(raise_exception=True)
-
-            # Save all the questions (bulk creation)
             self.perform_create(serializer)
+            # Serialize the created data
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        # Fallback to single object creation
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save()
+
 
 
 class AnswerViewSet(viewsets.ModelViewSet):

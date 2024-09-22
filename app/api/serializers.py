@@ -373,9 +373,7 @@ class QuestionSerializer(serializers.ModelSerializer):
     quest_id = serializers.PrimaryKeyRelatedField(
         queryset=Quest.objects.all(),
         source='quest',
-        # write_only=True
     )
-    # Nested serializer for answers
     answers = AnswerSerializer(many=True)
 
     class Meta:
@@ -383,47 +381,26 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = ['id', 'quest_id', 'text', 'number', 'max_score', 'answers']
 
     def create(self, validated_data):
-        # Extract the nested answer data
-        answers_data = validated_data.pop('answers')
+        # Check if validated_data is a list (bulk creation)
+        if isinstance(validated_data, list):
+            questions = []
+            for item in validated_data:
+                answers_data = item.pop('answers')
+                question = Question.objects.create(**item)
+                self._create_answers(question, answers_data)
+                questions.append(question)
+            return questions
+        else:
+            # Single object creation
+            answers_data = validated_data.pop('answers')
+            question = Question.objects.create(**validated_data)
+            self._create_answers(question, answers_data)
+            return question
 
-        # Create the question instance
-        question = Question.objects.create(**validated_data)
-
-        # Create related answers and associate them with the created question
+    def _create_answers(self, question, answers_data):
         for answer_data in answers_data:
             Answer.objects.create(question=question, **answer_data)
 
-        return question
-
-    def update(self, instance, validated_data):
-        # Update the question instance attributes
-        instance.text = validated_data.get('text', instance.text)
-        instance.number = validated_data.get('number', instance.number)
-        instance.max_score = validated_data.get('max_score', instance.max_score)
-
-        # Update answers if provided
-        if 'answers' in validated_data:
-            answers_data = validated_data.pop('answers')
-
-            # Delete existing answers and create new ones
-            instance.answers.all().delete()
-            for answer_data in answers_data:
-                Answer.objects.create(question=instance, **answer_data)
-
-        instance.save()
-        return instance
-
-    def update(self, instance, validated_data):
-        # Change the parent quest if provided (Not used in the current implementation)
-        quest = validated_data.pop('quest', None)
-        if quest:
-            instance.quest = quest
-
-        # Update the question instance attributes
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
 
 
 class UserQuestAttemptSerializer(serializers.ModelSerializer):
