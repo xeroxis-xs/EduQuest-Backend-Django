@@ -1,5 +1,5 @@
 from collections import defaultdict
-
+from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -58,6 +58,7 @@ User = get_user_model()
 
 
 # Test view to check the request method and data
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def test_view(request):
     return Response({
