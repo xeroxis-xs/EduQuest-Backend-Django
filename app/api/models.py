@@ -165,22 +165,8 @@ class UserCourseGroupEnrollment(models.Model):
     completed_on = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.user.username} enrolled in {self.course_group.course.code} - {self.course_group.name}"
+        return f"{self.student.username} enrolled in {self.course_group.course.code} - {self.course_group.name}"
 
-    # def save(self, *args, **kwargs):
-    #     is_new = self.pk is None
-    #     previous_completed_on = None
-    #     if not is_new:
-    #         previous = UserCourseGroupEnrollment.objects.get(pk=self.pk)
-    #         previous_completed_on = previous.completed_on
-    #
-    #     super(UserCourseGroupEnrollment, self).save(*args, **kwargs)
-    #
-    #     if (is_new and self.completed_on) or (previous_completed_on is None and self.completed_on is not None):
-    #         # Import task locally to avoid circular imports
-    #         from .tasks import award_completionist_badge
-    #         # Trigger the task
-    #         award_completionist_badge.delay(self.id)
 
 
 class Quest(models.Model):
@@ -268,7 +254,7 @@ class UserQuestAttempt(models.Model):
     total_score_achieved = models.FloatField(default=0)
 
     def __str__(self):
-        return f"{self.user.username} attempted {self.quest.name}"
+        return f"{self.student.username} attempted {self.quest.name}"
 
     def calculate_total_score_achieved(self):
         """
@@ -348,8 +334,6 @@ class UserAnswerAttempt(models.Model):
     def __str__(self):
         return f"{self.user_quest_attempt.student.username} selected {self.answer.text} for question {self.question.number}"
 
-    def __str__(self):
-        return f"{self.user_quest_question_attempt.user_quest_attempt.user.username}'s selection for {self.answer.text}"
 
 
 class Badge(models.Model):
@@ -384,7 +368,7 @@ class UserCourseBadge(models.Model):
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return (f"{self.user_course_group_enrollment.user.username} earned {self.badge.name} from Course "
+        return (f"{self.user_course_group_enrollment.student.username} earned {self.badge.name} from Course "
                 f"{self.user_course_group_enrollment.course_group.course.code}")
 
 
@@ -398,7 +382,7 @@ class UserQuestBadge(models.Model):
     awarded_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return (f"{self.user_quest_attempt.user.username} earned {self.badge.name} from Quest "
+        return (f"{self.user_quest_attempt.student.username} earned {self.badge.name} from Quest "
                 f"{self.user_quest_attempt.quest.name}")
 
 
