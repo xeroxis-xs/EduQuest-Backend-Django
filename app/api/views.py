@@ -51,6 +51,7 @@ from .serializers import (
 )
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.middleware.csrf import get_token
 import logging
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,11 @@ def test_view(request):
         'method': request.method,
         'data': request.data,
     })
+
+
+@api_view(['GET'])
+def csrf(request):
+    return Response({'csrfToken': get_token(request)})
 
 
 class EduquestUserViewSet(viewsets.ModelViewSet):
@@ -611,14 +617,14 @@ class AnalyticsPartOneView(APIView):
             course_group__course__type="Private").filter(
             enrolled_on__gte=last_week).count()
         new_enrollments_percentage = (
-                                                 new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
+                                             new_enrollments_last_week / total_enrollments) * 100 if total_enrollments > 0 else 0
 
         # 3. Total number of quest attempts and new attempts since last week
         total_quest_attempts = UserQuestAttempt.objects.exclude(quest__type="Private").count()
         new_quest_attempts_last_week = UserQuestAttempt.objects.exclude(quest__type="Private").filter(
             first_attempted_date__gte=last_week).count()
         new_quest_attempts_percentage = (
-                                                    new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
+                                                new_quest_attempts_last_week / total_quest_attempts) * 100 if total_quest_attempts > 0 else 0
 
         # 4. User with the shortest non-zero time_taken and perfect score
         # Filter UserQuestBadge for users with the "Perfectionist" badge
