@@ -44,7 +44,7 @@ router.register(r'documents', DocumentViewSet, basename='documents')
 
 
 urlpatterns = [
-    path('api/test/', test_view),
+    path('test/', test_view),
     path('', include(router.urls)),
     path("analytics/part-one/", AnalyticsPartOneView.as_view(), name='analytics-part-one'),
     path("analytics/part-two/", AnalyticsPartTwoView.as_view(), name='analytics-part-two'),
