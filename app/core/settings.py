@@ -95,6 +95,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://eduquest-frontend.azurewebsites.net",
+    "https://www.eduquest.one",
+    "https://eduquest.one",
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -190,8 +192,10 @@ STORAGES = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://eduquest-backend.azurewebsites.net',
-    'https://eduquest-frontend.azurewebsites.net'
+    'https://eduquest-admin.azurewebsites.net',
+    'https://eduquest.azurewebsites.net,'
+    'https://eduquest.one',
+    'https://www.eduquest.one',
 ]
 
 # Default primary key field type
@@ -207,7 +211,7 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "Welcome to EduQuest Admin",
     "search_model": ["api.Course"],
     "topmenu_links": [
-        {"name": "Front End App", "url": "https://eduquest-frontend.azurewebsites.net/", "permissions": ["auth.view_user"]},
+        {"name": "Front End App", "url": "https://www.eduquest.one/", "permissions": ["auth.view_user"]},
     ],
 }
 

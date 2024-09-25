@@ -35,8 +35,6 @@ def redirect_to_admin(request):
 def is_admin(user):
     return user.is_authenticated and user.is_staff
 
-def custom_error_redirect(request):
-    return redirect('https://eduquest-backend.azurewebsites.net/admin')
 
 schema_view = get_schema_view(
    openapi.Info(
