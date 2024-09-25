@@ -71,8 +71,10 @@ def test_view(request):
 
 
 @api_view(['GET'])
-def csrf(request):
-    return Response({'csrfToken': get_token(request)})
+def status_view(request):
+    return Response({
+        'status': 'OK'
+    })
 
 
 class EduquestUserViewSet(viewsets.ModelViewSet):
