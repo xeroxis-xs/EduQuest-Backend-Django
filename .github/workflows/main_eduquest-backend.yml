@@ -50,6 +50,11 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Install redis-cli
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-tools
+
       - name: Cache pip
         uses: actions/cache@v3
         with:
