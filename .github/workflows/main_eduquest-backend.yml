@@ -67,7 +67,7 @@ jobs:
 
       - name: Run Migrations
         run: |
-          cd app
+          cd ..
           python manage.py migrate
 
       - name: Run Tests
