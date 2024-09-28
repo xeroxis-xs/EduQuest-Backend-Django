@@ -90,6 +90,9 @@ jobs:
           echo "DB_HOST=localhost" >> $GITHUB_ENV
           echo "DB_PORT=5432" >> $GITHUB_ENV
           echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "AZURE_ACCOUNT_NAME=${{ secrets.AZURE_ACCOUNT_NAME }}" >> $GITHUB_ENV
+          echo "AZURE_ACCOUNT_KEY=${{ secrets.AZURE_ACCOUNT_KEY }}" >> $GITHUB_ENV
+          echo "AZURE_CONTAINER=${{ secrets.AZURE_CONTAINER }}" >> $GITHUB_ENV
 
       - name: Run Migrations
         run: |
@@ -99,17 +102,17 @@ jobs:
       - name: Run Test Models
         run: |
           cd app
-          python manage.py tests.test_models
+          python manage.py test api.tests.test_models
 
       - name: Run Test Serializers
         run: |
           cd app
-          python manage.py tests.test_serializers
+          python manage.py test api.tests.test_serializers
 
       - name: Run Test Views
         run: |
           cd app
-          python manage.py tests.test_views
+          python manage.py test api.tests.test_views
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
