@@ -96,10 +96,20 @@ jobs:
           cd app
           python manage.py migrate
 
-      - name: Run Tests
+      - name: Run Test Models
         run: |
           cd app
-          python manage.py test
+          python manage.py tests.test_models
+
+      - name: Run Test Serializers
+        run: |
+          cd app
+          python manage.py tests.test_serializers
+
+      - name: Run Test Views
+        run: |
+          cd app
+          python manage.py tests.test_views
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
