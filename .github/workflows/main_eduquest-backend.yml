@@ -122,6 +122,9 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t ${{ env.DOCKERHUB_REPO }}:${{ github.sha }} -f ./Dockerfile .
+      - name: Verify Docker Image
+        run: |
+          docker images ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
 
   push:
     name: Push
