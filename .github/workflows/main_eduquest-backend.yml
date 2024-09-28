@@ -69,7 +69,7 @@ jobs:
         run: |
           cd ..
           ls
-          python manage.py migrate
+          python app/manage.py migrate
 
       - name: Run Tests
         run: |
