@@ -66,6 +66,8 @@ jobs:
 #          echo "DJANGO_SETTINGS_MODULE=app.core.settings.test" >> $GITHUB_ENV
 
       - name: Run Migrations
+        env:
+          DJANGO_SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
         run: |
           cd app
           python manage.py migrate
