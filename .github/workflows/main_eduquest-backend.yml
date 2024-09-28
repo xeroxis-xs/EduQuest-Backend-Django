@@ -60,14 +60,12 @@ jobs:
             sleep 2
           done
 #
-#      - name: Set Environment Variables
-#        run: |
-#          echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
-#          echo "DJANGO_SETTINGS_MODULE=app.core.settings.test" >> $GITHUB_ENV
+      - name: Set Environment Variables
+        run: |
+          echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
+          echo "SECRET_KEY=${{ env.DJANGO_SECRET_KEY }}" >> $GITHUB_ENV
 
       - name: Run Migrations
-        env:
-          SECRET_KEY: ${{ env.DJANGO_SECRET_KEY }}
         run: |
           cd app
           python manage.py migrate
