@@ -66,11 +66,12 @@ jobs:
           echo "DJANGO_SETTINGS_MODULE=app.core.settings.test" >> $GITHUB_ENV
 
       - name: Run Migrations
+        working-directory: ./app
         run: |
-          cd app
           python manage.py migrate
 
       - name: Run Tests
+        working-directory: ./app
         run: |
           python manage.py test
 
