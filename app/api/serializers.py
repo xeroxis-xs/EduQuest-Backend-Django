@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .utils import split_full_name
 from collections import OrderedDict
-from django.utils import timezone
 from datetime import datetime
 from .models import (
     EduquestUser,
@@ -23,21 +22,6 @@ from .models import (
 )
 
 
-class BulkSerializer(serializers.ListSerializer):
-    def update(self, instances, validated_data):
-        instance_mapping = {instance.id: instance for instance in instances}
-        for item in validated_data:
-            print("Validated Item: ", item)  # Debugging
-            instance_id = item.get('id', None)
-            if instance_id is not None and instance_id in instance_mapping:
-                self.child.update(instance_mapping[instance_id], item)
-            else:
-                print("No instance ID found")  # Debugging
-                pass
-        # Optionally, handle deletions
-        return instances
-
-
 class EduquestUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = EduquestUser
@@ -45,19 +29,20 @@ class EduquestUserSerializer(serializers.ModelSerializer):
                   'updated_at', 'is_superuser', 'is_active', 'is_staff', 'total_points']
         read_only_fields = ['first_name', 'last_name', 'is_superuser', 'updated_at', 'username']
 
-    def create(self, validated_data):
-        username = validated_data['username']
-        validated_data['email'] = validated_data['email'].upper()
-        nickname = username.replace("#", "")
-        first_name, last_name = split_full_name(nickname)
-        # Default handling if nickname is not provided
-        user = EduquestUser.objects.create(
-            first_name=first_name,
-            last_name=last_name,
-            nickname=nickname,
-            **validated_data
-        )
-        return user
+    # def create(self, validated_data):
+    #     print(validated_data)
+    #     username = validated_data['username']
+    #     validated_data['email'] = validated_data['email'].upper()
+    #     nickname = username.replace("#", "")
+    #     first_name, last_name = split_full_name(nickname)
+    #     # Default handling if nickname is not provided
+    #     user = EduquestUser.objects.create(
+    #         first_name=first_name,
+    #         last_name=last_name,
+    #         nickname=nickname,
+    #         **validated_data
+    #     )
+    #     return user
 
 
 class EduquestUserSummarySerializer(serializers.ModelSerializer):
@@ -380,6 +365,12 @@ class QuestionSerializer(serializers.ModelSerializer):
         model = Question
         fields = ['id', 'quest_id', 'text', 'number', 'max_score', 'answers']
 
+    def validate(self, data):
+        answers = data.get('answers', [])
+        if not answers:
+            raise serializers.ValidationError("Answers cannot be empty.")
+        return data
+
     def create(self, validated_data):
         # Check if validated_data is a list (bulk creation)
         if isinstance(validated_data, list):
@@ -420,6 +411,27 @@ class UserQuestAttemptSerializer(serializers.ModelSerializer):
         model = UserQuestAttempt
         fields = ['id', 'quest_id', 'student_id', 'submitted', 'time_taken',
                   'total_score_achieved', 'first_attempted_date', 'last_attempted_date']
+
+    def validate(self, data):
+        student = data.get('student')
+        quest = data.get('quest')
+
+        if not student or not quest:
+            raise serializers.ValidationError("student_id and quest_id must be provided.")
+
+        # Check if the student is enrolled in the course group
+        course_group = quest.course_group
+        if not UserCourseGroupEnrollment.objects.filter(student=student, course_group=course_group).exists():
+            raise serializers.ValidationError("Student must be enrolled in the course group to attempt this quest.")
+
+        # Check the number of existing attempts
+        # Only validate the number of existing attempts during creation
+        if self.instance is None:
+            existing_attempts = UserQuestAttempt.objects.filter(student=student, quest=quest).count()
+            if existing_attempts >= quest.max_attempts:
+                raise serializers.ValidationError(f"Maximum number of attempts ({quest.max_attempts}) reached for this quest.")
+
+        return data
 
     def get_time_taken(self, obj):
         if isinstance(obj, OrderedDict):
@@ -479,37 +491,6 @@ class UserQuestAttemptSummarySerializer(serializers.ModelSerializer):
         model = UserQuestAttempt
         fields = ['id', 'quest', 'student_id', 'submitted', 'time_taken',
                   'total_score_achieved']
-
-
-class BulkUpdateUserQuestAttemptSerializer(serializers.Serializer):
-    """
-    Used for setting the 'submitted' field for multiple UserQuestAttempt instances
-    during quest import
-    """
-    ids = serializers.ListField(
-        child=serializers.IntegerField(),  # Expecting a list of integers (UserQuestAttempt IDs)
-        write_only=True
-    )
-    submitted = serializers.BooleanField()
-
-    class Meta:
-        fields = ['ids', 'submitted']
-
-    def update(self, validated_data):
-        ids = validated_data['ids']
-        submitted = validated_data['submitted']
-
-        # Retrieve the instances based on the IDs provided
-        user_quest_attempts = UserQuestAttempt.objects.filter(id__in=ids)
-
-        # Iterate over each instance and apply the custom update logic
-        for instance in user_quest_attempts:
-            instance_data = {'submitted': submitted}
-            # Call the existing update method logic for each instance
-            self.context['view'].get_serializer().update(instance, instance_data)
-
-        # Optionally return the updated records or a success message
-        return user_quest_attempts
 
 
 class UserAnswerAttemptSerializer(serializers.ModelSerializer):

@@ -3,6 +3,7 @@ import os
 
 from celery import chain
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.utils.text import slugify
 from .utils import split_full_name
@@ -22,7 +23,7 @@ class EduquestUser(AbstractUser):
     total_points = models.FloatField(default=0)
 
     def __str__(self):
-        return f"{self.id}"
+        return f"{self.id} - {self.username}"
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -113,7 +114,7 @@ class Course(models.Model):
         super(Course, self).save(*args, **kwargs)
 
         # After saving the instance, check if 'status' changed from Active to Expired
-        if (is_new_instance and self.status == 'Expired') or (old_status_value == 'Active' and self.status == 'Expired'):
+        if old_status_value == 'Active' and self.status == 'Expired':
             # Import tasks locally to avoid circular import
             from .tasks import check_course_completion_and_award_completionist_badge
             # Trigger all tasks
@@ -168,7 +169,6 @@ class UserCourseGroupEnrollment(models.Model):
         return f"{self.student.username} enrolled in {self.course_group.course.code} - {self.course_group.name}"
 
 
-
 class Quest(models.Model):
     """
     Model to store quests for each course group
@@ -204,9 +204,9 @@ class Quest(models.Model):
             previous_status = previous.status
 
         super(Quest, self).save(*args, **kwargs)
-
-        if (is_new and self.status == "Expired") or (previous_status != "Expired" and self.status == "Expired"):
-            self.expiration_date = datetime.now()
+        # If the quest status changed from Active to Expired
+        if previous_status == "Active" and self.status == "Expired":
+            self.expiration_date = timezone.now()
             super(Quest, self).save(update_fields=['expiration_date'])
 
             from .tasks import award_speedster_badge, award_expert_badge
@@ -313,7 +313,7 @@ class UserQuestAttempt(models.Model):
         super(UserQuestAttempt, self).save(*args, **kwargs)
 
         # After saving the instance, check if 'submitted' changed from False to True
-        if (is_new_instance and self.submitted) or (old_submitted_value == False and self.submitted == True):
+        if old_submitted_value == False and self.submitted == True:
             # Import tasks locally to avoid circular import
             from .tasks import (award_first_attempt_badge, calculate_score_and_issue_points)
             # Trigger all tasks
@@ -333,7 +333,6 @@ class UserAnswerAttempt(models.Model):
 
     def __str__(self):
         return f"{self.user_quest_attempt.student.username} selected {self.answer.text} for question {self.question.number}"
-
 
 
 class Badge(models.Model):
@@ -369,7 +368,8 @@ class UserCourseBadge(models.Model):
 
     def __str__(self):
         return (f"{self.user_course_group_enrollment.student.username} earned {self.badge.name} from Course "
-                f"{self.user_course_group_enrollment.course_group.course.code}")
+                f"{self.user_course_group_enrollment.course_group.course.code} - "
+                f"{self.user_course_group_enrollment.course_group.name}")
 
 
 class UserQuestBadge(models.Model):
@@ -402,9 +402,13 @@ class Document(models.Model):
             file_name, file_extension = os.path.splitext(self.file.name)
             unique_file_name = self.file.name
 
+            # Save the instance to generate a primary key
+            if not self.pk:
+                super(Document, self).save(*args, **kwargs)
+
             # Check if file with the same name exists
             while storage.exists(unique_file_name):
-                unique_file_name = f"{file_name}_{slugify(self.uploaded_by.username)}_{self.pk or ''}{file_extension}"
+                unique_file_name = f"{file_name}_{self.pk}{file_extension}"
 
             self.file.name = unique_file_name
 
@@ -418,3 +422,6 @@ class Document(models.Model):
 
     def __str__(self):
         return self.name
+
+
+

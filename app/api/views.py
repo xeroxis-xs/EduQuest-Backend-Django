@@ -52,7 +52,6 @@ from .serializers import (
 from rest_framework.decorators import api_view
 from django.utils.decorators import method_decorator
 from rest_framework.response import Response
-from django.middleware.csrf import get_token
 import logging
 
 logger = logging.getLogger(__name__)
@@ -179,7 +178,6 @@ class CourseGroupViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
     queryset = UserCourseGroupEnrollment.objects.all().order_by('-id')
     serializer_class = UserCourseGroupEnrollmentSerializer
@@ -202,7 +200,6 @@ class UserCourseGroupEnrollmentViewSet(viewsets.ModelViewSet):
             '-id')
         serializer = UserCourseGroupEnrollmentSerializer(queryset, many=True)
         return Response(serializer.data)
-
 
 
 class QuestViewSet(viewsets.ModelViewSet):
@@ -231,7 +228,7 @@ class QuestViewSet(viewsets.ModelViewSet):
         # Get all quests for the course groups
         queryset = Quest.objects.filter(
             course_group__in=course_group_enrollments.values('course_group')
-        ).order_by('-id')
+        ).exclude(type='Private').order_by('-id')
         serializer = QuestSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -369,7 +366,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        logger.debug("Received POST request with data: %s", request.data)
         if isinstance(request.data, list):
             serializer = self.get_serializer(data=request.data, many=True)
             serializer.is_valid(raise_exception=True)
@@ -457,36 +453,36 @@ class UserQuestAttemptViewSet(viewsets.ModelViewSet):
             instance.save()
         return Response({"message": f"All attempts for quest {quest_id} have been marked as submitted."})
 
-    @action(detail=False, methods=['patch'], url_path='bulk-update')
-    def bulk_update(self, request, *args, **kwargs):
-        """
-        Bulk update UserQuestAttempt
-        """
-        if isinstance(request.data, list):
-            updated_attempts = []
-            for attempt_data in request.data:
-                attempt_id = attempt_data.get('id')
-                if not attempt_id:
-                    return Response({"error": "ID is required for each attempt."}, status=status.HTTP_400_BAD_REQUEST)
-
-                try:
-                    # Retrieve the instance to update
-                    attempt_instance = UserQuestAttempt.objects.get(id=attempt_id)
-                except UserQuestAttempt.DoesNotExist:
-                    return Response({"error": f"UserQuestAttempt with id {attempt_id} not found."},
-                                    status=status.HTTP_404_NOT_FOUND)
-
-                # Use the existing serializer for each update
-                serializer = self.get_serializer(instance=attempt_instance, data=attempt_data, partial=True)
-                if serializer.is_valid():
-                    serializer.save()
-                    updated_attempts.append(serializer.data)
-                else:
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response({"updated_attempts": updated_attempts}, status=status.HTTP_200_OK)
-
-        return Response({"error": "Expected a list of data."}, status=status.HTTP_400_BAD_REQUEST)
+    # @action(detail=False, methods=['patch'], url_path='bulk-update')
+    # def bulk_update(self, request, *args, **kwargs):
+    #     """
+    #     Bulk update UserQuestAttempt
+    #     """
+    #     if isinstance(request.data, list):
+    #         updated_attempts = []
+    #         for attempt_data in request.data:
+    #             attempt_id = attempt_data.get('id')
+    #             if not attempt_id:
+    #                 return Response({"error": "ID is required for each attempt."}, status=status.HTTP_400_BAD_REQUEST)
+    #
+    #             try:
+    #                 # Retrieve the instance to update
+    #                 attempt_instance = UserQuestAttempt.objects.get(id=attempt_id)
+    #             except UserQuestAttempt.DoesNotExist:
+    #                 return Response({"error": f"UserQuestAttempt with id {attempt_id} not found."},
+    #                                 status=status.HTTP_404_NOT_FOUND)
+    #
+    #             # Use the existing serializer for each update
+    #             serializer = self.get_serializer(instance=attempt_instance, data=attempt_data, partial=True)
+    #             if serializer.is_valid():
+    #                 serializer.save()
+    #                 updated_attempts.append(serializer.data)
+    #             else:
+    #                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #
+    #         return Response({"updated_attempts": updated_attempts}, status=status.HTTP_200_OK)
+    #
+    #     return Response({"error": "Expected a list of data."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserAnswerAttemptViewSet(viewsets.ModelViewSet):
