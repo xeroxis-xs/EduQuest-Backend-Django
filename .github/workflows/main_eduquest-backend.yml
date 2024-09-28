@@ -63,7 +63,7 @@ jobs:
       - name: Set Environment Variables
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
-          echo "DJANGO_SETTINGS_MODULE=your_project.settings.test" >> $GITHUB_ENV
+          echo "DJANGO_SETTINGS_MODULE=app.core.settings.test" >> $GITHUB_ENV
 
       - name: Run Migrations
         run: |
