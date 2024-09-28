@@ -67,9 +67,8 @@ jobs:
 
       - name: Run Migrations
         run: |
-          cd ..
-          ls
-          python app/manage.py migrate
+          cd app
+          python manage.py migrate
 
       - name: Run Tests
         run: |
