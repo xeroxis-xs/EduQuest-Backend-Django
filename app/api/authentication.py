@@ -70,7 +70,7 @@ class CustomJWTAuthentication(JWTAuthentication):
             domain = email.split('@')[1]
             if domain == 'e.ntu.edu.sg':
                 is_staff = False
-            elif 'ntu.edu.sg' in domain:
+            elif 'ntu.edu.sg' in domain or 'staff.main.edu.sg' in domain:
                 is_staff = True
             else:
                 raise AuthenticationFailed('Invalid domain.')
