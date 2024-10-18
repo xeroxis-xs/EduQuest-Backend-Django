@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 import os
 
@@ -402,13 +403,9 @@ class Document(models.Model):
             file_name, file_extension = os.path.splitext(self.file.name)
             unique_file_name = self.file.name
 
-            # Save the instance to generate a primary key
-            if not self.pk:
-                super(Document, self).save(*args, **kwargs)
-
-            # Check if file with the same name exists
+            # Generate a unique file name using UUID
             while storage.exists(unique_file_name):
-                unique_file_name = f"{file_name}_{self.pk}{file_extension}"
+                unique_file_name = f"{file_name}_{uuid.uuid4().hex}{file_extension}"
 
             self.file.name = unique_file_name
 

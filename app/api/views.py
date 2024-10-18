@@ -1,3 +1,4 @@
+import uuid
 from collections import defaultdict
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
@@ -759,23 +760,33 @@ class AnalyticsPartTwoView(APIView):
 
     def get_badge_progression(self, user_id):
         all_badges = Badge.objects.all()
+        # Fetch all quest badges and course badges earned by the user
         user_quest_badges = UserQuestBadge.objects.filter(
             user_quest_attempt__student_id=user_id
         ).select_related('badge')
+        # Fetch all course badges earned by the user
         user_course_badges = UserCourseBadge.objects.filter(
             user_course_group_enrollment__student_id=user_id
         ).select_related('badge')
+        # Aggregate the badge data
+        badge_aggregation = {
+            badge.id: {
+                'badge_id': badge.id,
+                'badge_name': badge.name,
+                'badge_filename': badge.image.filename if badge.image else None,
+                'count': 0
+            } for badge in all_badges
+        }
 
-        badge_aggregation = {badge.id: {'badge_id': badge.id, 'badge_name': badge.name,
-                                        'badge_filename': badge.image.filename if badge.image else None, 'count': 0} for
-                             badge in all_badges}
-
+        # Increment the count for each badge earned by the user
         for badge in user_quest_badges:
             badge_aggregation[badge.badge.id]['count'] += 1
 
+        # Increment the count for each course badge earned by the user
         for badge in user_course_badges:
             badge_aggregation[badge.badge.id]['count'] += 1
 
+        # Filter out badges with zero count and sort by count in descending order
         badge_aggregation = [v for v in badge_aggregation.values() if v['count'] > 0]
         sorted_badge_aggregation = sorted(badge_aggregation, key=lambda x: x['count'], reverse=True)
 
