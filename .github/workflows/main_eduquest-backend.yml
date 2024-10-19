@@ -95,6 +95,11 @@ jobs:
           cd app
           python manage.py migrate
 
+      - name: Run Test Authentication
+        run: |
+          cd app
+          python manage.py test api.tests.test_authentication
+
       - name: Run Test Models
         run: |
           cd app
