@@ -4,7 +4,16 @@
 
 ## Overview
 EduQuest Backend Django is a backend application built with Django for managing educational quests, courses, and user enrollments.
-The frontend application can be found [here](https://github.com/xeroxis-xs/EduQuest-Frontend-ReactJS)
+The frontend application can be found [here](https://github.com/xeroxis-xs/EduQuest-Frontend-ReactJS).
+
+## Table of Contents
+- [Admin Panel](#admin-panel)
+- [API Documentation](#api-documentation)
+- [Technologies](#technologies)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation and Running the Application](#installation-and-running-the-application)
+- [Running Tests](#running-tests)
 
 ## Admin Panel
 ![img.png](img.png)
