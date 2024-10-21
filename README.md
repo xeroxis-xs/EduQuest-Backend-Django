@@ -1,38 +1,33 @@
-# EduQuest Backend (Django)
+# EduQuest Backend Application (Django)
 
 ![CI](https://github.com/xeroxis-xs/EduQuest-Backend-Django/actions/workflows/main_eduquest-backend.yml/badge.svg)
 
-## Overview
-EduQuest Backend Django is a backend application built with Django for managing educational quests, courses, and user enrollments.
+## Introduction
+The **EduQuest Backend Application** is the core service layer of EduQuest, a web app designed to enhance student engagement and learning performance through digital badges and gamified learning experiences. 
+
+This backend provides essential functionalities for managing user authentication, course management, quest generation, and progress tracking, as well as integration with external tools such as Wooclap for importing quiz data.
+
+Built using the Django REST Framework (DRF), the backend manages API requests from the frontend, handles Bearer token authentication, processes quest-related logic, and issues digital badges to students based on their achievements.
+
 The frontend application can be found [here](https://github.com/xeroxis-xs/EduQuest-Frontend-ReactJS).
 
 ## Table of Contents
 - [Admin Panel](#admin-panel)
-- [API Documentation](#api-documentation)
-- [Technologies](#technologies)
-- [Features](#features)
-- [Requirements](#requirements)
-- [Installation and Running the Application](#installation-and-running-the-application)
+- [Demo](#demo)
+- [Technologies Used](#technologies-used)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Running the Application](#running-the-application)
 - [Running Tests](#running-tests)
 
-## Admin Panel
+## Demo
+### Admin Panel
+Site: [EduQuest Admin Panel](https://eduquest-admin.azurewebsites.net/)
 ![img.png](img.png)
 
-## API Documentation
-The API documentation can be found [here](https://eduquest-admin.azurewebsites.net/docs/)
+### API Documentation
+API documentation: [Documentation](https://eduquest-admin.azurewebsites.net/docs/)
 ![img_1.png](img_1.png)
-
-## Technologies
-- Django
-- Django REST Framework
-- PostgreSQL
-- Redis
-- Celery
-- Azure Blob Storage
-- Azure Active Directory
-- Docker
-- Pytest
-- Flake8
 
 ## Features
 - Authentication with JWT
@@ -42,13 +37,19 @@ The API documentation can be found [here](https://eduquest-admin.azurewebsites.n
 - Badge management
 - Asynchronous task processing with Celery and Redis
 
-## Requirements
+## Technologies Used:
+- **Django**: A Python-based web framework used for building the backend application, managing authentication, and handling server-side operations.
+- **Django REST Framework (DRF)**: An extension of Django that provides a powerful toolkit for building Web APIs.
+- **PostgreSQL**: A relational database used to store course, quest, user, and badge data.
+- **Celery**: A distributed task queue for running asynchronous operations, such as badge validation and quest processing.
+- **Redis**: Used as the message broker for Celery to handle asynchronous task execution.
+
+## Prerequisites
 - Recommended IDE: JetBrains PyCharm
 - Python 3.10
 - PostgreSQL
-- Redis
 
-## Installation and Running the Application
+## Installation
 
 1. **Clone the repository:**
     ```bash
@@ -101,15 +102,18 @@ The API documentation can be found [here](https://eduquest-admin.azurewebsites.n
     python manage.py createsuperuser
     ```
 
-8. **Run the development server without Redis and Celery:**
+## Running the Application
+1. **Run the development server with Redis and Celery (Recommended):**
+    ```bash
+   docker-compose up -d
+   ```
+   
+1. **Run the development server without Redis and Celery:**
     ```bash
     python manage.py runserver
     ```
 
-9. **Run the development server with Redis and Celery:**
-    ```bash
-   docker-compose up -d
-   ```
+
 
 ## Running Tests
 To run all unit tests, use the following command:
