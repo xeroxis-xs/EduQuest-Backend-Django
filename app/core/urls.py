@@ -38,7 +38,7 @@ def is_admin(user):
 
 schema_view = get_schema_view(
    openapi.Info(
-      title="NTU Leaderboard API",
+      title="EduQuest API",
       default_version='v1',
       description="This a documentation for the EduQuest API",
       terms_of_service="https://www.google.com/policies/terms/",

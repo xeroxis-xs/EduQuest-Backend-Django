@@ -1,25 +1,109 @@
-# Django Project
+# EduQuest Backend (Django)
 
-This is a Django project that is containerized using Docker and deployed using Azure Pipelines.
+![CI](https://github.com/xeroxis-xs/EduQuest-Backend-Django/.github/workflows/main_eduquest-backend.yml/badge.svg)
 
-## Getting Started
+## Overview
+EduQuest Backend Django is a backend application built with Django for managing educational quests, courses, and user enrollments.
+The frontend application can be found [here](https://github.com/xeroxis-xs/EduQuest-Frontend-ReactJS)
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+## Admin Panel
+![img.png](img.png)
 
-### Prerequisites
+## API Documentation
+The API documentation can be found [here](https://eduquest-admin.azurewebsites.net/docs/)
+![img_1.png](img_1.png)
 
-- Docker: You need to have Docker installed on your machine to run this project. You can download Docker from the official Docker website.
-- Python: This project is built with Python. Make sure you have it installed on your machine.
+## Technologies
+- Django
+- Django REST Framework
+- PostgreSQL
+- Redis
+- Celery
+- Azure Blob Storage
+- Azure Active Directory
+- Docker
+- Pytest
+- Flake8
 
-### Installation and Running Locally
+## Features
+- Authentication with JWT
+- User management
+- Course and group management
+- Quest and question management
+- Badge management
+- Asynchronous task processing with Celery and Redis
 
-1. Clone the repository to your local machine.
+## Requirements
+- Recommended IDE: JetBrains PyCharm
+- Python 3.10
+- PostgreSQL
+- Redis
 
-2. Build and run the Docker container:
+## Installation and Running the Application
+
+1. **Clone the repository:**
+    ```bash
+    git clone https://github.com/xeroxis-xs/EduQuest-Backend-Django.git
+    cd EduQuest-Backend-Django
+    ```
+
+2. **Create and activate a virtual environment:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
+
+3. **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. **Set up environment variables:**
+    Create a `.env` file in the root directory and add the following:
+    ```env
+    SECRET_KEY=your_django_secret_key
+    ALLOWED_HOSTS=your_allowed_hosts_ip
+    DB_NAME=postgres_sql_db_name
+    DB_USER=postgres_sql_db_user
+    DB_PASSWORD=postgres_sql_db_password
+    DB_HOST=postgres_sql_db_host
+    DB_PORT=postgres_sql_db_port
+    AZURE_AD_CLIENT_ID=your_registered_backend_app_client_id
+    AZURE_AD_CLIENT_SECRET=your_registered_backend_app_client_secret
+    AZURE_ACCOUNT_NAME=your_azure_storage_account_name
+    AZURE_ACCOUNT_KEY=your_azure_storage_account_key
+    AZURE_STORAGE_ACCOUNT_CONNECTION_STRING=your_azure_storage_account_connection_string
+    AZURE_CONTAINER=your_azure_storage_container
+    DEBUG=1_for_dev_0_for_prod
+    ```
+
+5. **Change Directory to the project root:**
+    ```bash
+    cd app
+   ```
+
+6. **Apply migrations for new database:**
+    ```bash
+    python manage.py migrate
+    ```
+
+7. **Create a superuser:**
+    ```bash
+    python manage.py createsuperuser
+    ```
+
+8. **Run the development server without Redis and Celery:**
+    ```bash
+    python manage.py runserver
+    ```
+
+9. **Run the development server with Redis and Celery:**
+    ```bash
+   docker-compose up -d
+   ```
+
+## Running Tests
+To run all unit tests, use the following command:
 ```bash
-docker-compose up --build
+python manage.py test api.tests
 ```
-The application will be accessible at `localhost:8000`.
-
-### Deployment
-This project is deployed using Azure Pipelines. The `azure-pipelines.yml` file contains the configuration for the deployment pipeline.
