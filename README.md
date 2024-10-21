@@ -1,6 +1,6 @@
 # EduQuest Backend (Django)
 
-![CI](https://github.com/xeroxis-xs/EduQuest-Backend-Django/.github/workflows/main_eduquest-backend.yml/badge.svg)
+![CI](https://github.com/xeroxis-xs/EduQuest-Backend-Django/actions/workflows/main_eduquest-backend.yml/badge.svg)
 
 ## Overview
 EduQuest Backend Django is a backend application built with Django for managing educational quests, courses, and user enrollments.
