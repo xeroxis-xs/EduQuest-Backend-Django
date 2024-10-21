@@ -1,0 +1,2677 @@
+{
+	"info": {
+		"_postman_id": "de74e8d3-8f16-45ff-ba80-c039006167be",
+		"name": "EduQuest API",
+		"description": "## Getting Started\n\nTo get started with accessing EduQuest backend API services, you need to obtain an access token using OAuth2.0 with Microsoft Azure AD. Follow the steps below:\n\n1. **Set Environment**:\n    \n    - Ensure that you have selected the appropriate environment in Postman (Dev or Prod) based on your usage.\n        \n2. **Generate Access Token**:\n    \n    - Navigate to the **Authorization** tab in this folder.\n        \n    - Click on **Generate Token** at the bottom of the page to initiate authentication with Microsoft Azure AD.\n        \n3. **Authenticate with Microsoft**:\n    \n    - Follow the prompts to log in and authorize access.\n        \n    - Once authenticated, click on **Use Token** to apply the access token.\n        \n4. **Access the API**:\n    \n    - You can now use the **access token** to make requests to the EduQuest API endpoints in this folder.\n        \n\n**Note:**\n\nReuquests marked with \"**Not in use**\" refers to endpoints that are implmented but not used by the front-end application.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2287920",
+		"_collection_link": "https://blue-firefly-927763.postman.co/workspace/NTU-FYP_EduQuest~43a70238-f8fb-4513-9047-8b40cb076c7c/collection/2287920-de74e8d3-8f16-45ff-ba80-c039006167be?action=share&source=collection_link&creator=2287920"
+	},
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/eduquest-users/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"eduquest-users",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Photo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://graph.microsoft.com/v1.0/me/photo/$value",
+							"protocol": "https",
+							"host": [
+								"graph",
+								"microsoft",
+								"com"
+							],
+							"path": [
+								"v1.0",
+								"me",
+								"photo",
+								"$value"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/eduquest-users/1",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"eduquest-users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A User By Email",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/eduquest-users/by_email/?email=C210101@E.NTU.EDU.SG",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"eduquest-users",
+								"by_email",
+								""
+							],
+							"query": [
+								{
+									"key": "email",
+									"value": "C210101@E.NTU.EDU.SG"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/eduquest-users/by_admin/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"eduquest-users",
+								"by_admin",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update A User",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "nickname",
+									"value": "TEOH XI SHENG",
+									"type": "text"
+								},
+								{
+									"key": "is_staff",
+									"value": "True",
+									"type": "text"
+								},
+								{
+									"key": "total_points",
+									"value": "0",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/eduquest-users/5/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"eduquest-users",
+								"5",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/eduquest-users/73/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"eduquest-users",
+								"73",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Academic Year",
+			"item": [
+				{
+					"name": "All Academic Years",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/academic-years/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"academic-years",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Non-private Academic Years",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/academic-years/non_private/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"academic-years",
+								"non_private",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "An Academic Year (Not in use)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/academic-years/6/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"academic-years",
+								"6",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Academic Year (Not in use)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"start_year\": 2020,\r\n    \"end_year\": 2021\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/academic-years/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"academic-years",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Academic Year (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"start_year\": 2024,\r\n    \"end_year\": 2025\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/academic-years/7/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"academic-years",
+								"7",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "An Academic Year (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/academic-years/7/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"academic-years",
+								"7",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Term (Not in use)",
+			"item": [
+				{
+					"name": "All Terms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/terms/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"terms",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Non-private Terms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/terms/non_private/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"terms",
+								"non_private",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Term (Not in use)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/terms/7/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"terms",
+								"7",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Term (Not in use)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"academic_year_id\": 6,\r\n    \"name\": \"Semester 3\",\r\n    \"start_date\": \"2025-01-12\",\r\n    \"end_date\": \"2025-05-09\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/terms/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"terms",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Term (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"academic_year_id\": 5,\r\n    \"name\": \"Semester 5\",\r\n    \"start_date\": \"2025-01-12\",\r\n    \"end_date\": \"2025-05-09\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/terms/14/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"terms",
+								"14",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Term (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/terms/14/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"terms",
+								"14",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Course",
+			"item": [
+				{
+					"name": "All Courses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/courses/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Non-private Courses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/courses/non_private/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"non_private",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Non-private Courses Enrolled",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/courses/by_enrolled_user/?user_id=76",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"by_enrolled_user",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "76"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Course",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/courses/59/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"59",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"term_id\": 2,\r\n    \"image_id\": 2,\r\n    \"coordinators\": [1, 2],\r\n    \"name\": \"Introduction to ABC\",\r\n    \"code\": \"SC2207\",\r\n    \"type\": \"System-enroll\",\r\n    \"description\": \"Learn about database design, management, and SQL. Understand relational databases, normalization, indexing, and transactions, and gain practical experience with database management systems.\",\r\n    \"status\": \"Active\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/courses/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"term_id\": 46,\r\n    \"image_id\": 300,\r\n    \"coordinators\": [],\r\n    \"name\": \"Introduction to Databases\",\r\n    \"code\": \"SC2207\",\r\n    \"type\": \"System-enroll\",\r\n    \"description\": \"Learn about database design, management, and SQL. Understand relational databases, normalization, indexing, and transactions, and gain practical experience with database management systems.\",\r\n    \"status\": \"Active\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/courses/59/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"59",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Course",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/Course/8/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"Course",
+								"8",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Course Group",
+			"item": [
+				{
+					"name": "All Course Groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Course Groups By Course",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/by_course/?course_id=1",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								"by_course",
+								""
+							],
+							"query": [
+								{
+									"key": "course_id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Course Groups By Private Course",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/by_private_course/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								"by_private_course",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Non-private Course Groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/non_private/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								"non_private",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Course Group",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/489",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								"489"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course Group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_id\": 10,\r\n    \"instructor_id\": 2,\r\n    \"name\": \"TEL1111\",\r\n    \"session_day\": \"Wednesday\",\r\n    \"session_time\": \"12:30 PM - 1:30 PM\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course Group",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_id\": 11,\r\n    \"instructor_id\": 2,\r\n    \"name\": \"TEL0000\",\r\n    \"session_day\": \"Wednesday\",\r\n    \"session_time\": \"12:30 PM - 1:30 PM\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/22/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								"22",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Course Group",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/course-groups/14/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"course-groups",
+								"14",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Course Group Enrollment",
+			"item": [
+				{
+					"name": "All User Course Enrollments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All User Course Enrollments By User and Course Group",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/by_course_group_and_user?user_id=67&coruse_group_id=57",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								"by_course_group_and_user"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "67"
+								},
+								{
+									"key": "coruse_group_id",
+									"value": "57"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All User Course Enrollments By User and Course",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/by_course_and_user?user_id=176&course_id=11",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								"by_course_and_user"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "176"
+								},
+								{
+									"key": "course_id",
+									"value": "11"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A User Course",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/4/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								"4",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create A User Course Enrollment (Enroll)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_group_id\": 10,\r\n    \"student_id\": 2\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "test",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "m6XRhowzlzuutGUZ4V206d2gU1A0sVN9dl1OtQ606qbaq1U6i8s7qKQAl1jKl0fX",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_group_id\": 10,\r\n    \"student_id\": 2\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/test/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"test",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "CSRF",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "7PIOkI8a8MnORPfDxrKiIxzsEHj7Lmqh3nOJmwLTjiOccmbVnzlRp2EquACMd1ER",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_group_id\": 10,\r\n    \"student_id\": 2\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/csrf/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"csrf",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Course Enrollment (Change Group)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_group_id\": 71,\r\n    \"student_id\": 76\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/271/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								"271",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A User Course Enrollment (Unenroll)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-group-enrollments/45/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-group-enrollments",
+								"45",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Quest",
+			"item": [
+				{
+					"name": "All Quests",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/quests/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All My Private (Generated) Quests",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/quests/private_by_user/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"private_by_user",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Quests from All Course Groups Enrolled",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/quests/by_enrolled_user/?user_id=2",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"by_enrolled_user",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Quests from A Course Group",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/quests/by_course_group/?course_group_id=66",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"by_course_group",
+								""
+							],
+							"query": [
+								{
+									"key": "course_group_id",
+									"value": "66"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Quest",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/quests/1053",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"1053"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Quest",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"course_group_id\": 8,\r\n    \"image_id\": 19,\r\n    \"organiser_id\": 2,\r\n    \"name\": \"My Private Quest\",\r\n    \"description\": \"Description of Quest 1\",\r\n    \"type\": \"Private\",\r\n    \"max_attempts\": 1,\r\n    \"tutorial_date\": \"2024-09-20T18:45:00.000Z\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/quests/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Import Quest",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "postman-cloud:///1ef4fdf0-5728-4fb0-923e-f641e73cd914"
+								},
+								{
+									"key": "name",
+									"value": "quest abc",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "some quest description",
+									"type": "text"
+								},
+								{
+									"key": "type",
+									"value": "Wooclap",
+									"type": "text"
+								},
+								{
+									"key": "status",
+									"value": "Active",
+									"type": "text"
+								},
+								{
+									"key": "max_attempts",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "course_group_id",
+									"value": "8",
+									"type": "text"
+								},
+								{
+									"key": "image_id",
+									"value": "19",
+									"type": "text"
+								},
+								{
+									"key": "organiser_id",
+									"value": "2",
+									"type": "text"
+								},
+								{
+									"key": "tutorial_date",
+									"value": "2024-09-20T18:45:00.000Z",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/quests/import_quest/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"import_quest",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Quest",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"status\": \"Expired\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/quests/62/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"62",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Quest",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/quests/25/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"quests",
+								"25",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Question and Answers",
+			"item": [
+				{
+					"name": "All Questions and Answers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/questions/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"questions",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Question and its Answers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/questions/117",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"questions",
+								"117"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Multiple Questions with Multiple Answers",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    {\r\n        \"number\": 1,\r\n        \"max_score\": 10,\r\n        \"quest_id\": 26,\r\n        \"text\": \"A fair coin is flipped 10 times. What is the probability of getting exactly 6 heads?\",\r\n        \"answers\": [\r\n            {\r\n                \"is_correct\": true,\r\n                \"text\": \"0.2051\",\r\n                \"reason\": \"Correct. The probability is calculated using the binomial formula: $P(X=6) = C(10,6) \\\\times (0.5)^{6} \\\\times (0.5)^{4} = 210 \\\\times (0.5)^{10} \\\\approx 0.2051$.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.1172\",\r\n                \"reason\": \"Incorrect. This is the probability of getting exactly 3 heads.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.0439\",\r\n                \"reason\": \"Incorrect. This is the probability of getting exactly 2 heads.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.2461\",\r\n                \"reason\": \"Incorrect. This is the probability of getting exactly 5 heads.\"\r\n            }\r\n        ]\r\n    },\r\n    {\r\n        \"number\": 2,\r\n        \"max_score\": 10,\r\n        \"quest_id\": 26,\r\n        \"text\": \"The average number of emails a person receives per hour is 4. What is the probability that a person receives exactly 5 emails in the next hour?\",\r\n        \"answers\": [\r\n            {\r\n                \"is_correct\": true,\r\n                \"text\": \"0.156\",\r\n                \"reason\": \"Correct. Using the Poisson formula: $P(X=5) = \\\\frac{e^{-4} \\\\times 4^{5}}{5!} \\\\approx 0.156$.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.195\",\r\n                \"reason\": \"Incorrect. This is the probability of receiving exactly 3 emails.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.104\",\r\n                \"reason\": \"Incorrect. This is the probability of receiving exactly 6 emails.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.146\",\r\n                \"reason\": \"Incorrect. This is the probability of receiving exactly 2 emails.\"\r\n            }\r\n        ]\r\n    },\r\n    {\r\n        \"number\": 3,\r\n        \"max_score\": 10,\r\n        \"quest_id\": 24,\r\n        \"text\": \"A fair die is rolled repeatedly until a '6' appears. What is the probability that the first '6' appears on the 4th roll?\",\r\n        \"answers\": [\r\n            {\r\n                \"is_correct\": true,\r\n                \"text\": \"0.0965\",\r\n                \"reason\": \"Correct. $P(X=4) = \\\\left(\\\\frac{5}{6}\\\\right)^{3} \\\\times \\\\frac{1}{6} \\\\approx 0.0965$.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.1389\",\r\n                \"reason\": \"Incorrect. This is the probability that the first '6' appears on the 2nd roll.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.1667\",\r\n                \"reason\": \"Incorrect. This is the probability that the first '6' appears on the 1st roll.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.1157\",\r\n                \"reason\": \"Incorrect. This is the probability that the first '6' appears on the 3rd roll.\"\r\n            }\r\n        ]\r\n    },\r\n    {\r\n        \"number\": 4,\r\n        \"max_score\": 10,\r\n        \"quest_id\": 26,\r\n        \"text\": \"A random variable $X$ is uniformly distributed between 2 and 8. What is the probability that $X$ is less than 5?\",\r\n        \"answers\": [\r\n            {\r\n                \"is_correct\": true,\r\n                \"text\": \"0.5\",\r\n                \"reason\": \"Correct. $P(X < 5) = \\\\frac{5 - 2}{8 - 2} = \\\\frac{3}{6} = 0.5$.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.25\",\r\n                \"reason\": \"Incorrect. This would be correct if the interval were larger.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.333\",\r\n                \"reason\": \"Incorrect. This corresponds to $P(X < 4)$.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"0.6\",\r\n                \"reason\": \"Incorrect. This is not consistent with the uniform distribution over [2, 8].\"\r\n            }\r\n        ]\r\n    },\r\n    {\r\n        \"number\": 5,\r\n        \"max_score\": 10,\r\n        \"quest_id\": 26,\r\n        \"text\": \"The heights of adult men are normally distributed with a mean of 70 inches and a standard deviation of 3 inches. Which of the following statements are true? (Select all that apply.)\",\r\n        \"answers\": [\r\n            {\r\n                \"is_correct\": true,\r\n                \"text\": \"Approximately 68% of men are between 67 and 73 inches tall.\",\r\n                \"reason\": \"Correct. This represents one standard deviation from the mean in a normal distribution.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"Approximately 95% of men are taller than 64 inches.\",\r\n                \"reason\": \"Incorrect. Approximately 95% are between 64 and 76 inches (within two standard deviations).\"\r\n            },\r\n            {\r\n                \"is_correct\": true,\r\n                \"text\": \"The probability that a randomly selected man is taller than 73 inches is 0.1587.\",\r\n                \"reason\": \"Correct. The z-score is 1, so $P(Z > 1) \\\\approx 0.1587$.\"\r\n            },\r\n            {\r\n                \"is_correct\": false,\r\n                \"text\": \"The probability that a randomly selected man is shorter than 67 inches is 0.8413.\",\r\n                \"reason\": \"Incorrect. $P(Z < -1) = 0.1587$, so the probability is 0.1587, not 0.8413.\"\r\n            }\r\n        ]\r\n    }\r\n]\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/questions/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"questions",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Question (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"quest_id\": 12,\r\n    \"text\": \"What is the capital of France?!!\",\r\n    \"number\": 1,\r\n    \"max_score\": 5\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/questions/29/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"questions",
+								"29",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Multiple Answers (Quest Import)",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    {\r\n        \"id\": 401,\r\n        \"text\": \"Government better against.\",\r\n        \"is_correct\": false,\r\n        \"reason\": null\r\n    },\r\n    {\r\n        \"id\": 392,\r\n        \"text\": \"Manage read.\",\r\n        \"is_correct\": true,\r\n        \"reason\": null\r\n    }\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/answers/bulk-update/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"answers",
+								"bulk-update",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Question (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/questions/29/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"questions",
+								"29",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "UserQuestAttempt",
+			"item": [
+				{
+					"name": "All UserQuestAttempt",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UserQuestAttempt by User and Quest",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/by_user_quest/?user_id=76&quest_id=66",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								"by_user_quest",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "76"
+								},
+								{
+									"key": "quest_id",
+									"value": "66"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UserQuestAttempt by Quest",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/by_quest/?quest_id=79",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								"by_quest",
+								""
+							],
+							"query": [
+								{
+									"key": "quest_id",
+									"value": "79"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserQuestAttempt",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/10",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								"10"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create UserQuestAttempt (Also Triggers Bulk Create for Answer Attempts)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"student_id\": 76,\r\n    \"quest_id\": 66,\r\n    \"first_attempted_date\": \"2024-09-04T10:04:30.873145Z\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set Submitted By Quest (Import Quest)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/set_all_attempts_submitted_by_quest/?quest_id=1",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								"set_all_attempts_submitted_by_quest",
+								""
+							],
+							"query": [
+								{
+									"key": "quest_id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update UserQuestAttempt (Quest Submission)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"submitted\": true,\r\n    \"last_attempted_date\": \"2024-09-29T12:49:13.001095Z\",\r\n    \"student_id\": 12,\r\n    \"quest_id\": 1\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/10/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								"10",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserQuestAttempt (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-attempts/190/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-attempts",
+								"190",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "UserAnswerAttempt",
+			"item": [
+				{
+					"name": "All UserAnswerAttempts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UserAnswerAttempts by UserQuestAttempt",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/by_user_quest_attempt/?user_quest_attempt_id=265",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								"by_user_quest_attempt",
+								""
+							],
+							"query": [
+								{
+									"key": "user_quest_attempt_id",
+									"value": "265"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UserAnswerAttempts by Quest",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/by_quest/?quest_id=56",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								"by_quest",
+								""
+							],
+							"query": [
+								{
+									"key": "quest_id",
+									"value": "56"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserAnswerAttempts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/37163",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								"37163"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create UserAnswerAttempts (Not in use)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"user_quest_attempt_id\": 257,\r\n    \"question_id\": 72,\r\n    \"answer_id\": 207,\r\n    \"is_selected\": false,\r\n    \"score_achieved\": 0.0\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update UserAnswerAttempt (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"user_quest_attempt_id\": 349,\r\n    \"question_id\": 125,\r\n    \"answer_id\": 393,\r\n    \"is_selected\": false,\r\n    \"score_achieved\": 0.0\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/1246/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								"1246",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Multiple UserAnswerAttempt (Answer Save/Submit)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\r\n    {\r\n        \"id\": 1149,\r\n        \"is_selected\": true\r\n    },\r\n    {\r\n        \"id\": 1148,\r\n        \"is_selected\": true\r\n    }\r\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/bulk-update/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								"bulk-update",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserAnswerAttempt (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-answer-attempts/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-answer-attempts",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Badge",
+			"item": [
+				{
+					"name": "All Badges",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/badges/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"badges",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Badge (Not in use)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/badges/1",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"badges",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Badge (Not in use)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "ZSOH007@e.ntu.edu.sg",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "#SOH ZU WEI#",
+									"type": "text"
+								},
+								{
+									"key": "first_name",
+									"value": "ZU WEI",
+									"type": "text"
+								},
+								{
+									"key": "last_name",
+									"value": "SOH",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/badges/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"badges",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Badge (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "test2@e.ntu.edu.sg",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "#SOH ZU WEI#",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "first_name",
+									"value": "ZU WEI",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "last_name",
+									"value": "SOH",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/badges/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"badges",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Badge (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/badges/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"badges",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "UserCourseBadge",
+			"item": [
+				{
+					"name": "All UserCourseBadge",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-badges/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-badges",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All UserCourseBadge by User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-badges/by_user/?user_id=76",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-badges",
+								"by_user",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "76"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserCourseBadge (Not in use)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-badges/1",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-badges",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create UserCourseBadge (Not in use)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "ZSOH007@e.ntu.edu.sg",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "#SOH ZU WEI#",
+									"type": "text"
+								},
+								{
+									"key": "first_name",
+									"value": "ZU WEI",
+									"type": "text"
+								},
+								{
+									"key": "last_name",
+									"value": "SOH",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-course-badges/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-badges",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update UserCourseBadge (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "test2@e.ntu.edu.sg",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "#SOH ZU WEI#",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "first_name",
+									"value": "ZU WEI",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "last_name",
+									"value": "SOH",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-course-badges/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-badges",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserCourseBadge (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-course-badges/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-course-badges",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "UserQuestBadge",
+			"item": [
+				{
+					"name": "All UserQuestBadge",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-badges/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-badges",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All UserQuestBadge By User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-badges/by_user/?user_id=76",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-badges",
+								"by_user",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "76"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserQuestBadge (Not in use)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-badges/1",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-badges",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create UserQuestBadge (Not in use)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "ZSOH007@e.ntu.edu.sg",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "#SOH ZU WEI#",
+									"type": "text"
+								},
+								{
+									"key": "first_name",
+									"value": "ZU WEI",
+									"type": "text"
+								},
+								{
+									"key": "last_name",
+									"value": "SOH",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-badges/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-badges",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update UserQuestBadge (Not in use)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "email",
+									"value": "test2@e.ntu.edu.sg",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "#SOH ZU WEI#",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "first_name",
+									"value": "ZU WEI",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "last_name",
+									"value": "SOH",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-badges/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-badges",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A UserQuestBadge (Not in use)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/user-quest-badges/2/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"user-quest-badges",
+								"2",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Document Upload",
+			"item": [
+				{
+					"name": "Upload Document",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "postman-cloud:///1ef53385-05ea-4a70-b3e0-d1d5ba620686"
+								},
+								{
+									"key": "name",
+									"value": "test file name",
+									"type": "text"
+								},
+								{
+									"key": "uploaded_by",
+									"value": "137",
+									"type": "text"
+								},
+								{
+									"key": "size",
+									"value": "105059",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{hostname}}/api/documents/upload/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"upload",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Documents by User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/documents/by_user/?user_id=137",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"by_user",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "137"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "A Document",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/documents/4/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"documents",
+								"4",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Part One",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/analytics/part-one/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"part-one",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Part Two",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/analytics/part-two/?user_id=2&option=badge_progression",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"part-two",
+								""
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "2"
+								},
+								{
+									"key": "option",
+									"value": "badge_progression",
+									"description": "course_progression OR badge_progression OR both"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Part Three",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/analytics/part-three/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"part-three",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Part Four",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{hostname}}/api/analytics/part-four/",
+							"host": [
+								"{{hostname}}"
+							],
+							"path": [
+								"api",
+								"analytics",
+								"part-four",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "oauth2",
+		"oauth2": [
+			{
+				"key": "state",
+				"value": "12345",
+				"type": "string"
+			},
+			{
+				"key": "scope",
+				"value": "{{scope}}",
+				"type": "string"
+			},
+			{
+				"key": "clientSecret",
+				"value": "{{client_secret}}",
+				"type": "string"
+			},
+			{
+				"key": "clientId",
+				"value": "{{client_id}}",
+				"type": "string"
+			},
+			{
+				"key": "accessTokenUrl",
+				"value": "https://login.microsoftonline.com/{{tenant_id}}/oauth2/v2.0/token",
+				"type": "string"
+			},
+			{
+				"key": "authUrl",
+				"value": "https://login.microsoftonline.com/{{tenant_id}}/oauth2/v2.0/authorize",
+				"type": "string"
+			},
+			{
+				"key": "redirect_uri",
+				"value": "https://oauth.pstmn.io/v1/browser-callback",
+				"type": "string"
+			},
+			{
+				"key": "tokenName",
+				"value": "Access Token",
+				"type": "string"
+			},
+			{
+				"key": "addTokenTo",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

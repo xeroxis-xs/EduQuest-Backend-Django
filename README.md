@@ -12,8 +12,10 @@ Built using the Django REST Framework (DRF), the backend manages API requests fr
 The frontend application can be found [here](https://github.com/xeroxis-xs/EduQuest-Frontend-ReactJS).
 
 ## Table of Contents
-- [Admin Panel](#admin-panel)
 - [Demo](#demo)
+  - [Admin Panel](#admin-panel)
+  - [API Documentation](#api-documentation)
+- [Key Features](#key-features)
 - [Technologies Used](#technologies-used)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -29,13 +31,14 @@ Site: [EduQuest Admin Panel](https://eduquest-admin.azurewebsites.net/)
 API documentation: [Documentation](https://eduquest-admin.azurewebsites.net/docs/)
 ![img_1.png](img_1.png)
 
-## Features
-- Authentication with JWT
-- User management
-- Course and group management
-- Quest and question management
-- Badge management
-- Asynchronous task processing with Celery and Redis
+
+## Key Features:
+- **API Management**: Provides RESTful endpoints for managing users, courses, quests, badges, and student progress.
+- **User Authentication**: Secure authentication using JWT tokens from Azure Active Directory (Azure AD).
+- **Course and Quest Management**: Backend logic for managing course creation, quest assignments, and tracking user participation.
+- **Badge Issuance System**: Asynchronous badge validation and issuance system using Celery and Redis to ensure scalability.
+- **Integration with Wooclap**: Imports quiz data and tracks student performance from Wooclap events.
+
 
 ## Technologies Used:
 - **Django**: A Python-based web framework used for building the backend application, managing authentication, and handling server-side operations.

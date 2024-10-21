@@ -1,0 +1,66 @@
+{
+	"info": {
+		"_postman_id": "ffe9f28c-7df6-4f92-a91a-2696b77c4c46",
+		"name": "EduQuest Microservice API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2287920",
+		"_collection_link": "https://blue-firefly-927763.postman.co/workspace/NTU-FYP_EduQuest~43a70238-f8fb-4513-9047-8b40cb076c7c/collection/2287920-ffe9f28c-7df6-4f92-a91a-2696b77c4c46?action=share&source=collection_link&creator=2287920"
+	},
+	"item": [
+		{
+			"name": "Generate Questions",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"document_id\": \"Lecture_01_Introduction.pdf\",\n    \"num_questions\": 2,\n    \"difficulty\": \"easy\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{microservice_hostname}}/generate_questions_from_document",
+					"host": [
+						"{{microservice_hostname}}"
+					],
+					"path": [
+						"generate_questions_from_document"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Status",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"document_id\": \"Lecture_01_Introduction.pdf\",\n    \"num_questions\": 2,\n    \"difficulty\": \"easy\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{microservice_hostname}}/status",
+					"host": [
+						"{{microservice_hostname}}"
+					],
+					"path": [
+						"status"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
