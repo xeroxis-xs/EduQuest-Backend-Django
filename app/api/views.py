@@ -289,56 +289,73 @@ class QuestViewSet(viewsets.ModelViewSet):
         # Use atomic transaction to ensure data integrity
         with transaction.atomic():
             try:
-                # Create a Quest object
-                quest_serializer = QuestSerializer(data=quest_data)
-                quest_serializer.is_valid(raise_exception=True)
-                quest = quest_serializer.save()
-                new_quest_id = quest.id
-                course_group = quest_serializer.data.get('course_group')
+                try:
+                    # Create a Quest object
+                    quest_serializer = QuestSerializer(data=quest_data)
+                    quest_serializer.is_valid(raise_exception=True)
+                    quest = quest_serializer.save()
+                    new_quest_id = quest.id
+                except Exception as e:
+                    raise ValidationError({"Error creating quest": str(e)})
 
-                questions_serializer = []
-                # Process each question in the questions_data list
-                for question_data in questions_data:
-                    question_data['quest_id'] = new_quest_id
-                    question_serializer = QuestionSerializer(data=question_data)
-                    question_serializer.is_valid(raise_exception=True)
-                    question = question_serializer.save()
-                    questions_serializer.append(question_serializer.data)
+                try:
+                    questions_serializer = []
+                    # Process each question in the questions_data list
+                    for question_data in questions_data:
+                        question_data['quest_id'] = new_quest_id
+                        question_serializer = QuestionSerializer(data=question_data)
+                        question_serializer.is_valid(raise_exception=True)
+                        question = question_serializer.save()
+                        questions_serializer.append(question_serializer.data)
+                except Exception as e:
+                    raise ValidationError({"Error creating questions": str(e)})
 
                 # Enroll users and create UserQuestAttempt and UserAnswerAttempt objects
                 for user_data in users_data:
-                    user, created = EduquestUser.objects.get_or_create(
-                        email=user_data['email'],
-                        defaults={
-                            'email': user_data['email'],
-                            'username': user_data['username'],
-                            'nickname': user_data['username']
+                    try:
+                        print(f"Processing user: {user_data['email']}")
+                        user, created = EduquestUser.objects.get_or_create(
+                            email=user_data['email'],
+                            defaults={
+                                'email': user_data['email'],
+                                'username': user_data['username'],
+                                'nickname': user_data['username'],
+                            }
+                        )
+                    except Exception as e:
+                        raise ValidationError({"Error creating user": str(e)})
+
+                    try:
+                        # Enroll the user in the course group
+                        enrollment, enrolled = UserCourseGroupEnrollment.objects.get_or_create(
+                            student=user,
+                            course_group_id=quest_data['course_group_id'],
+                        )
+                    except Exception as e:
+                        raise ValidationError({"Error enrolling new user": str(e)})
+
+                    try:
+                        # Create a UserQuestAttempt object
+                        user_quest_attempt_data = {
+                            'student_id': user.id,
+                            'quest_id': new_quest_id
                         }
-                    )
+                        user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
+                        user_quest_attempt_serializer.is_valid(raise_exception=True)
+                        user_quest_attempt = user_quest_attempt_serializer.save()
+                        new_user_quest_attempt_id = user_quest_attempt.id
 
-                    # Enroll the user in the course group
-                    enrollment, enrolled = UserCourseGroupEnrollment.objects.get_or_create(
-                        student=user,
-                        course_group_id=course_group['id']
-                    )
+                        # Get the generated empty-prefilled UserAnswerAttempt objects for the UserQuestAttempt
+                        user_answer_attempts = UserAnswerAttempt.objects.filter(
+                            user_quest_attempt=new_user_quest_attempt_id
+                        )
+                    except Exception as e:
+                        raise ValidationError({"Error creating user quest attempt": str(e)})
 
-                    # Create a UserQuestAttempt object
-                    user_quest_attempt_data = {
-                        'student_id': user.id,
-                        'quest_id': new_quest_id
-                    }
-                    user_quest_attempt_serializer = UserQuestAttemptSerializer(data=user_quest_attempt_data)
-                    user_quest_attempt_serializer.is_valid(raise_exception=True)
-                    user_quest_attempt = user_quest_attempt_serializer.save()
-                    new_user_quest_attempt_id = user_quest_attempt.id
-
-                    # Get the generated empty-prefilled UserAnswerAttempt objects for the UserQuestAttempt
-                    user_answer_attempts = UserAnswerAttempt.objects.filter(
-                        user_quest_attempt=new_user_quest_attempt_id)
                     # Update selected answers based on Excel data
                     try:
+                        selected_answers = excel.get_user_answer_attempts(user.email)
                         for user_answer_attempt in user_answer_attempts:
-                            selected_answers = excel.get_user_answer_attempts(user.email)
                             for selected_answer in selected_answers:
                                 if selected_answer['question'] == user_answer_attempt.question.text:
                                     if user_answer_attempt.answer.text in selected_answer['selected_answers']:
@@ -354,7 +371,7 @@ class QuestViewSet(viewsets.ModelViewSet):
                 )
             except Exception as e:
                 return Response(
-                    {"Error creating quest": str(e)},
+                    {"Error importing quest": str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 

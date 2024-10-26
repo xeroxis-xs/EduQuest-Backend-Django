@@ -138,6 +138,9 @@ def award_perfectionist_badge(user_quest_attempt_id):
         if quest.type == "Private":
             return f"[Perfectionist] Skipping private quest: {quest.name}"
 
+        if quest.total_max_score() == 0:
+            return f"[Perfectionist] Skipping Quest: {quest.name} only has open-ended / mcq with no correct ans questions"
+
         if not attempt.submitted:
             return f"[Perfectionist] Attempt for quest: {quest.name} is not submitted yet"
 
@@ -178,6 +181,9 @@ def award_speedster_badge(quest_id):
         quest = Quest.objects.get(id=quest_id)
         if quest.type == "Private":
             return f"[Speedster] Skipping private quest: {quest.name}"
+
+        if quest.total_max_score() == 0:
+            return f"[Speedster] Skipping Quest: {quest.name} only has open-ended / mcq with no correct ans questions"
 
         # Get all user quest attempts with a score greater than 0
         user_quest_attempts = UserQuestAttempt.objects.filter(
@@ -236,6 +242,9 @@ def award_expert_badge(quest_id):
 
         if quest.type == "Private":
             return f"[Expert] Skipping private quest: {quest.name}"
+
+        if quest.total_max_score() == 0:
+            return f"[Expert] Skipping Quest: {quest.name} only has open-ended / mcq with no correct ans questions"
 
         if quest.status != "Expired":
             return f"[Expert] Quest: {quest.name} is not expired yet"

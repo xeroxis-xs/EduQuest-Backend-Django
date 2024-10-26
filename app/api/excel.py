@@ -1,5 +1,7 @@
 import pandas as pd
 
+from .utils import split_full_name
+
 
 class Excel():
     help = 'Import quiz results from Excel file'
@@ -39,6 +41,7 @@ class Excel():
             # Check if the question is a MCQ by checking if row 3 is 'Choice'
             if df.iloc[1, 0] == 'Choice':
                 # Scan for 'Maximum score' and get the value on the right cell
+                # Some question are asking for 'opinions' and do not have 'Maximum score' field, so we just set to 0
                 for i in range(num_rows):
                     if df.iloc[i, 0] == 'Maximum score':
                         question['max_score'] = df.iloc[i, 1]
@@ -46,7 +49,7 @@ class Excel():
                         break
 
                 if 'max_score' not in question:
-                    continue
+                    question['max_score'] = 0
 
                 self.question_type_mapping_list.append({'sheet_name': sheet_name, 'is_mcq': True})
                 is_mcq = True
