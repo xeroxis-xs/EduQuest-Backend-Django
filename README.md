@@ -12,6 +12,7 @@ Built using the Django REST Framework (DRF), the backend manages API requests fr
 The frontend application can be found [here](https://github.com/xeroxis-xs/EduQuest-Frontend-ReactJS).
 
 ## Table of Contents
+- [Architecture Overview](#architecture-overview)
 - [Demo](#demo)
   - [Admin Panel](#admin-panel)
   - [API Documentation](#api-documentation)
@@ -22,14 +23,19 @@ The frontend application can be found [here](https://github.com/xeroxis-xs/EduQu
 - [Running the Application](#running-the-application)
 - [Running Tests](#running-tests)
 
+## Architecture Overview
+<p align="center">
+  <img src="images/backend_arch.svg" alt="Backend Architecture Diagram" width="600">
+</p>
+
 ## Demo
 ### Admin Panel
 Site: [EduQuest Admin Panel](https://eduquest-admin.azurewebsites.net/)
-![img.png](img.png)
+![img.png](images/img.png)
 
 ### API Documentation
 API documentation: [Documentation](https://eduquest-admin.azurewebsites.net/docs/)
-![img_1.png](img_1.png)
+![img_1.png](images/img_1.png)
 
 
 ## Key Features:
