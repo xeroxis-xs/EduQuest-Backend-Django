@@ -1,6 +1,5 @@
 import pandas as pd
-
-from .utils import split_full_name
+import re
 
 
 class Excel():
@@ -112,25 +111,57 @@ class Excel():
                         # Check if the first character is '/'
                         if wooclap_selected_answer_string[0] == '/':
                             # User did not attempt the question
-                            print(f"Getting Answer Attempts: {email} did not attempt question {j - 5 + 1}")
-                        else:
+                            print(f"Getting Question Attempts: {email} did not attempt question {j - 5 + 1}")
+                        elif wooclap_selected_answer_string[:4] == 'V - ' or wooclap_selected_answer_string[
+                                                                             :4] == 'X - ':
+                            # MCQ selection with correct answer(s)
                             # Get characters after the first 4 characters
                             wooclap_selected_answer_string = wooclap_selected_answer_string[4:]
-                            print(f"Getting Answer Attempts: {email} attempted question {j - 5 + 1}, options "
+                            print(f"Getting Question Attempts: {email} attempted question {j - 5 + 1}, options "
+                                  f"selected: {wooclap_selected_answer_string}")
+                        else:
+                            # MCQ selection without any correct answer(s)
+                            # Get the entire string
+                            wooclap_selected_answer_string = wooclap_selected_answer_string
+                            print(f"Getting Question Attempts: {email} attempted question {j - 5 + 1}, options "
                                   f"selected: {wooclap_selected_answer_string}")
 
                         # Ensure the question index is within bounds
                         if j - 5 < len(self.question_list):
                             user_question_attempt['question'] = self.question_list[j - 5]['text']
-                            user_question_attempt['selected_answers'] = [
-                                answer['text'] for answer in self.question_list[j - 5]['answers']
-                                if answer['text'] in wooclap_selected_answer_string.split(', ')
-                            ]
+                            # Get the list of possible answer texts
+                            possible_answers = [answer['text'] for answer in self.question_list[j - 5]['answers']]
+
+                            # Initialize selected_answers as empty list
+                            selected_answers = []
+                            selected_answer_string = wooclap_selected_answer_string.strip()
+
+                            # Escape possible answers for regex
+                            escaped_possible_answers = [re.escape(ans) for ans in possible_answers]
+                            # Sort by length descending to match longer answers first (avoids partial matches)
+                            escaped_possible_answers.sort(key=len, reverse=True)
+
+                            # Build a regex pattern to match any of the possible answers
+                            pattern = r'\b(' + '|'.join(escaped_possible_answers) + r')\b'
+
+                            # Find all matches in the selected answer string
+                            matches = re.findall(pattern, selected_answer_string)
+
+                            # Remove duplicates and maintain order
+                            seen = set()
+                            selected_answers = []
+                            for match in matches:
+                                if match not in seen:
+                                    seen.add(match)
+                                    selected_answers.append(match)
+
+                            user_question_attempt['selected_answers'] = selected_answers
+
                             # Log selected answers
                             for answer in user_question_attempt['selected_answers']:
-                                print(f"Getting Answer Attempts: {email} selected answer: {answer}")
-                            user_answer_attempt_list.append(user_question_attempt)
+                                print(f"Getting Question Attempts: {email} selected answer: {answer}")
 
+                            user_answer_attempt_list.append(user_question_attempt)
                         else:
                             print(f"Getting Answer Attempts: Question index {j - 5 + 1} out of bounds")
                 i += 1

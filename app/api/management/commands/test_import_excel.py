@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 import pandas as pd
 import json
+import re
 
 class Command(BaseCommand):
     help = 'Import quiz results from Excel file'
@@ -24,7 +25,7 @@ class Command(BaseCommand):
 
     def read_excel_sheets(self):
         print("Reading Excel Sheets")
-        excel_file = 'app/api/management/commands/JUQSDR_Tutorial_1-results.xlsx'
+        excel_file = 'app/api/management/commands/NKKSNB_Tutorial_4_-_SCS3_Tue-PM-results.xlsx'
         self.xls = pd.ExcelFile(excel_file, engine='openpyxl')
         self.sheets = self.xls.sheet_names
         self.main_results_sheet = pd.read_excel(self.xls, sheet_name=self.xls.sheet_names[0])
@@ -51,6 +52,7 @@ class Command(BaseCommand):
             # Check if the question is a MCQ by checking if row 3 is 'Choice'
             if df.iloc[1, 0] == 'Choice':
                 # Scan for 'Maximum score' and get the value on the right cell
+                # Some question are asking for 'opinions' and do not have 'Maximum score' field, so we just set to 0
                 for i in range(num_rows):
                     if df.iloc[i, 0] == 'Maximum score':
                         question['max_score'] = df.iloc[i, 1]
@@ -58,7 +60,7 @@ class Command(BaseCommand):
                         break
 
                 if 'max_score' not in question:
-                    continue
+                    question['max_score'] = 0
 
                 self.question_type_mapping_list.append({'sheet_name': sheet_name, 'is_mcq': True})
                 is_mcq = True
@@ -77,6 +79,7 @@ class Command(BaseCommand):
                 print("Getting Questions: Open Question or Poll Type, Skipping")
 
         print("Getting Questions: Completed!\n")
+        print(f"Question List: {self.question_list}")
         return self.question_list
 
     def get_users(self):
@@ -122,22 +125,54 @@ class Command(BaseCommand):
                         if wooclap_selected_answer_string[0] == '/':
                             # User did not attempt the question
                             print(f"Getting Question Attempts: {email} did not attempt question {j - 5 + 1}")
-                        else:
+                        elif wooclap_selected_answer_string[:4] == 'V - ' or wooclap_selected_answer_string[:4] == 'X - ':
+                            # MCQ selection with correct answer(s)
                             # Get characters after the first 4 characters
                             wooclap_selected_answer_string = wooclap_selected_answer_string[4:]
+                            print(f"Getting Question Attempts: {email} attempted question {j - 5 + 1}, options "
+                                  f"selected: {wooclap_selected_answer_string}")
+                        else:
+                            # MCQ selection without any correct answer(s)
+                            # Get the entire string
+                            wooclap_selected_answer_string = wooclap_selected_answer_string
                             print(f"Getting Question Attempts: {email} attempted question {j - 5 + 1}, options "
                                   f"selected: {wooclap_selected_answer_string}")
 
                         # Ensure the question index is within bounds
                         if j - 5 < len(self.question_list):
                             user_question_attempt['question'] = self.question_list[j - 5]['text']
-                            user_question_attempt['selected_answers'] = [
-                                answer['text'] for answer in self.question_list[j - 5]['answers']
-                                if answer['text'] in wooclap_selected_answer_string.split(', ')
-                            ]
+                            # Get the list of possible answer texts
+                            possible_answers = [answer['text'] for answer in self.question_list[j - 5]['answers']]
+
+                            # Initialize selected_answers as empty list
+                            selected_answers = []
+                            selected_answer_string = wooclap_selected_answer_string.strip()
+
+                            # Escape possible answers for regex
+                            escaped_possible_answers = [re.escape(ans) for ans in possible_answers]
+                            # Sort by length descending to match longer answers first (avoids partial matches)
+                            escaped_possible_answers.sort(key=len, reverse=True)
+
+                            # Build a regex pattern to match any of the possible answers
+                            pattern = r'\b(' + '|'.join(escaped_possible_answers) + r')\b'
+
+                            # Find all matches in the selected answer string
+                            matches = re.findall(pattern, selected_answer_string)
+
+                            # Remove duplicates and maintain order
+                            seen = set()
+                            selected_answers = []
+                            for match in matches:
+                                if match not in seen:
+                                    seen.add(match)
+                                    selected_answers.append(match)
+
+                            user_question_attempt['selected_answers'] = selected_answers
+
                             # Log selected answers
                             for answer in user_question_attempt['selected_answers']:
                                 print(f"Getting Question Attempts: {email} selected answer: {answer}")
+
                             user_question_attempt_list.append(user_question_attempt)
 
                         else:
