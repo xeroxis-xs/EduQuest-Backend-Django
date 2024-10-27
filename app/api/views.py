@@ -357,7 +357,7 @@ class QuestViewSet(viewsets.ModelViewSet):
                         selected_answers = excel.get_user_answer_attempts(user.email)
                         for user_answer_attempt in user_answer_attempts:
                             for selected_answer in selected_answers:
-                                if selected_answer['question'] == user_answer_attempt.question.text:
+                                if selected_answer['number'] == user_answer_attempt.question.number:
                                     if user_answer_attempt.answer.text in selected_answer['selected_answers']:
                                         user_answer_attempt.is_selected = True
                                         user_answer_attempt.save()

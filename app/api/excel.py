@@ -20,7 +20,7 @@ class Excel():
 
     def get_questions(self):
         print("Getting Questions: Starting...")
-
+        number = 1
         for sheet_name in self.sheets:
             # Skip 'Main results' and 'Wall' sheets
             if sheet_name in ['Main results', 'Wall']:
@@ -32,7 +32,7 @@ class Excel():
 
             question = {
                 'text': df.columns[0],
-                'number': self.sheets.index(sheet_name),
+                'number': number,
                 'answers': []
             }
             is_mcq = False  # Assume that it is Open Question or Poll Type
@@ -61,6 +61,7 @@ class Excel():
                         break
                     question['answers'].append({'text': df.iloc[j, 0], 'is_correct': False})
                 self.question_list.append(question)
+                number += 1
                 print(f"Getting Questions: Max score: {question['max_score']}, Number of answer options: {len(question['answers'])}")
             else:
                 self.question_type_mapping_list.append({'sheet_name': sheet_name, 'is_mcq': False})
@@ -128,12 +129,12 @@ class Excel():
 
                         # Ensure the question index is within bounds
                         if j - 5 < len(self.question_list):
+                            user_question_attempt['number'] = self.question_list[j - 5]['number']
                             user_question_attempt['question'] = self.question_list[j - 5]['text']
                             # Get the list of possible answer texts
                             possible_answers = [answer['text'] for answer in self.question_list[j - 5]['answers']]
 
                             # Initialize selected_answers as empty list
-                            selected_answers = []
                             selected_answer_string = wooclap_selected_answer_string.strip()
 
                             # Escape possible answers for regex
@@ -141,8 +142,8 @@ class Excel():
                             # Sort by length descending to match longer answers first (avoids partial matches)
                             escaped_possible_answers.sort(key=len, reverse=True)
 
-                            # Build a regex pattern to match any of the possible answers
-                            pattern = r'\b(' + '|'.join(escaped_possible_answers) + r')\b'
+                            # Build a regex pattern without word boundaries
+                            pattern = r'(' + '|'.join(escaped_possible_answers) + r')'
 
                             # Find all matches in the selected answer string
                             matches = re.findall(pattern, selected_answer_string)
